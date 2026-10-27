@@ -4,9 +4,9 @@ Owner: Cosmos Cloud Admin (spec team). Status: draft v1.
 Audience: the implementation model and the household admin who operates the server.
 
 > [!IMPORTANT]
-> Names of env vars, URL paths (`/auth/callback`, `/healthz`, …) and CLI subcommands below are
-> the **deployment-side contract**. If `20-architecture.md` defines different names, **20-architecture.md
-> wins** and this document must be updated to match. All conflicts must be resolved before implementation.
+> This document is canonical only for **operations**: the Dockerfile, the dev compose stack, Cosmos and Authentik
+> configuration, backup/restore/upgrade procedures. Env vars, CLI subcommands, health endpoints and Taskfile targets
+> are defined in `20-architecture.md` (§12, §17, §13, §18); routes in `40-api.md`. This document only *uses* them.
 
 ---
 
@@ -21,8 +21,8 @@ Audience: the implementation model and the household admin who operates the serv
 | Local dev IdP | **Real Authentik** (server + worker + postgres; no Redis since Authentik 2025.10) auto-provisioned by a **blueprint**. Lightweight alternative profile `mock` with `mock-oauth2-server` for CI/e2e. |
 | Dev hostnames | App `http://localhost:8080`, Authentik `http://auth.localhost:9000` (browsers resolve `*.localhost` to loopback; container uses `extra_hosts: host-gateway`). |
 | Production | Cosmos ServApp from a cosmos-compose import; Cosmos URL route `recipes.<domain>` → `recipes:8080`, Let's Encrypt HTTPS by Cosmos, **Cosmos "Authentication required" = OFF**, SmartShield ON, network isolated. |
-| Absolute URLs | App derives every absolute URL and cookie `Secure` flag from `RECIPES_BASE_URL`, **never** from `X-Forwarded-Host/Proto`. `X-Forwarded-For` is honoured only from `RECIPES_TRUSTED_PROXIES`. |
-| Backups | Online SQLite snapshot via `VACUUM INTO` (app subcommand `backup`), then copy `/data/images`; off-host copy by Cosmos/host backup tooling. |
+| Absolute URLs | App derives every absolute URL and cookie `Secure` flag from `APP_BASE_URL`, **never** from `X-Forwarded-Host/Proto`. `X-Forwarded-For` is honoured only from `APP_TRUSTED_PROXIES`. |
+| Backups | Online SQLite snapshot via `VACUUM INTO` (app subcommand `backup`, also daily in-process), then copy `/data/media`; off-host copy by Cosmos/host backup tooling. |
 | Upgrades | Pinned semver image tags, backup → change tag → recreate; forward-only migrations at startup. Cosmos auto-update OFF. |
 
 ---
@@ -36,15 +36,15 @@ Audience: the implementation model and the household admin who operates the serv
      calls to Authentik discovery/JWKS), `/etc/passwd` with the `nonroot` user, and tzdata.
 2. **CGO disabled**: `CGO_ENABLED=0`, `-trimpath`, `-ldflags "-s -w -X <module>/internal/version.Version=${VERSION} -X ...Commit=${COMMIT}"`. The SQLite driver must be pure Go (e.g. `modernc.org/sqlite`) — per architecture.
 3. **Static assets embedded** in the binary (`embed.FS`) — templates, CSS, JS, i18n files. The image contains only the binary and the empty `/data` skeleton.
-4. **Non-root**: `USER 65532:65532`. No capabilities required. Must run with `read_only: true` root filesystem; all writes go to `/data` (and `/tmp` via tmpfs if the Go runtime needs it — multipart spill files must go to `RECIPES_DATA_DIR/tmp` instead, see §2.3).
+4. **Non-root**: `USER 65532:65532`. No capabilities required. Must run with `read_only: true` root filesystem; all writes go to `/data` (the Dockerfile sets `TMPDIR=/data/tmp`, so multipart spill files and SQLite temp files land on the volume; see §2.3).
 5. **`/data` ownership**: the image must contain `/data` owned by `65532:65532` so that Docker initialises an **empty named volume** with the correct owner. (Bind mounts are not initialised — the host dir must be `chown 65532:65532`; see §5.4.)
 6. **Exposed port**: `EXPOSE 8080`.
 7. **Volume**: `VOLUME ["/data"]`.
-8. **Healthcheck**: `HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD ["/app/recipes","healthcheck"]`. The `healthcheck` subcommand performs `GET http://127.0.0.1:${PORT}/healthz` with a 2 s timeout and exits 0/1. It must not need env vars other than the listen address.
-9. **Entrypoint**: `ENTRYPOINT ["/app/recipes"]`, `CMD ["serve"]`. Subcommands required by deployment: `serve`, `healthcheck`, `backup`, `migrate` (optional, `serve` migrates automatically), `version`.
+8. **Healthcheck**: `HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD ["/app/recipes","healthcheck"]`. The `healthcheck` subcommand is defined in `20 §13`; it must not need env vars other than `APP_LISTEN_ADDR`.
+9. **Entrypoint**: `ENTRYPOINT ["/app/recipes"]`, `CMD ["serve"]`. Subcommands: `20 §17`.
 10. **Labels** (OCI): `org.opencontainers.image.title|version|revision|source|created`.
 11. **Multi-arch**: build `linux/amd64` and `linux/arm64` with `docker buildx` (the Cosmos host may be ARM, e.g. Raspberry Pi / Ampere).
-12. **Signals**: `serve` handles `SIGTERM` with graceful shutdown (≤ 10 s drain), then closes the DB cleanly (WAL checkpoint).
+12. **Signals**: `serve` handles `SIGTERM` per `20 §4` (≤ 8 s drain, WAL checkpoint), inside Docker's default 10 s stop grace period.
 13. Final image size target: < 30 MB.
 
 ### 2.2 Reference Dockerfile (spec block)
@@ -53,7 +53,7 @@ Audience: the implementation model and the household admin who operates the serv
 # syntax=docker/dockerfile:1.7
 ARG GO_VERSION=1.25
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS build
-ARG TARGETOS TARGETARCH VERSION=dev COMMIT=unknown
+ARG TARGETOS TARGETARCH VERSION=dev COMMIT=unknown DATE=unknown
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
@@ -61,17 +61,18 @@ COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath \
-      -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
+      -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
       -o /out/recipes ./cmd/recipes \
- && mkdir -p /out/data/images /out/data/backups /out/data/tmp
+ && mkdir -p /out/data/media /out/data/backups /out/data/tmp
 
 FROM gcr.io/distroless/static-debian12:nonroot
 LABEL org.opencontainers.image.title="ninja-woodfire-recipe-keeper" \
       org.opencontainers.image.source="https://github.com/<owner>/<repo>"
 COPY --from=build /out/recipes /app/recipes
 COPY --from=build --chown=65532:65532 /out/data /data
-ENV RECIPES_LISTEN_ADDR=":8080" \
-    RECIPES_DATA_DIR="/data"
+ENV APP_LISTEN_ADDR=":8080" \
+    APP_DATA_DIR="/data" \
+    TMPDIR="/data/tmp"
 USER 65532:65532
 EXPOSE 8080
 VOLUME ["/data"]
@@ -90,9 +91,11 @@ CMD ["serve"]
 ├── recipes.db            # SQLite main file (WAL mode)
 ├── recipes.db-wal        # WAL (never copy alone; see §8)
 ├── recipes.db-shm
-├── images/               # uploaded images, immutable files, content-addressed or UUID-named
-│   └── ab/abcdef…​.webp  # 2-char fan-out dirs; originals + derived sizes per architecture
-├── tmp/                  # upload staging; same filesystem as images/ for atomic rename; wiped at startup
+├── media/                # processed images, immutable (layout: 20 §9)
+│   └── ab/abcdef…/       # 2-char fan-out, one dir per storage key
+│       ├── full.jpg
+│       └── thumb.jpg
+├── tmp/                  # TMPDIR: upload staging, SQLite temp; same filesystem as media/ for atomic rename; wiped at startup
 └── backups/              # output of `recipes backup` (rotated, see §8)
 ```
 
@@ -101,34 +104,23 @@ is not writable (common bind-mount permission mistake); never store anything out
 
 ---
 
-## 3. Environment variables (deployment contract)
+## 3. Environment variables per environment
 
-Every secret var also accepts a `<NAME>_FILE` variant (path to a file whose trimmed content is the value; used with Docker secrets). If both are set, startup fails.
+Definitions and defaults: `20 §12` (the only env-var table). Values used by deployment:
 
-| Variable | Required | Default | Example / notes |
-|---|---|---|---|
-| `RECIPES_BASE_URL` | **yes** | — | `https://recipes.example.com` (prod), `http://localhost:8080` (dev). No trailing slash. Source of all absolute URLs, OIDC redirect URI (`${BASE_URL}/auth/callback`), and cookie `Secure` flag (`https` ⇒ Secure). |
-| `RECIPES_LISTEN_ADDR` | no | `:8080` | |
-| `RECIPES_DATA_DIR` | no | `/data` | |
-| `RECIPES_DB_PATH` | no | `${DATA_DIR}/recipes.db` | |
-| `RECIPES_OIDC_ISSUER` | **yes** | — | `https://auth.example.com/application/o/recipes/` (Authentik per-provider issuer, **trailing slash included** — must match the `iss` claim exactly). |
-| `RECIPES_OIDC_CLIENT_ID` | **yes** | — | from Authentik provider |
-| `RECIPES_OIDC_CLIENT_SECRET` | **yes** (secret) | — | from Authentik provider (confidential client) |
-| `RECIPES_OIDC_SCOPES` | no | `openid profile email` | add `offline_access` only if architecture uses refresh tokens |
-| `RECIPES_OIDC_GROUPS_CLAIM` | no | `groups` | |
-| `RECIPES_OIDC_ALLOWED_GROUPS` | no | *(empty = any user Authentik lets through)* | comma list, e.g. `recipes-users,recipes-admins` (defence in depth; primary gate is the Authentik app binding, §6.5) |
-| `RECIPES_OIDC_ADMIN_GROUPS` | no | *(empty = no admins)* | e.g. `recipes-admins` |
-| `RECIPES_SESSION_KEY` | **yes** (secret) | — | ≥ 32 random bytes, base64. Generate: `openssl rand -base64 48`. Rotating it logs everyone out. |
-| `RECIPES_TRUSTED_PROXIES` | no | *(empty = trust none)* | CIDR list whose `X-Forwarded-For` is honoured. Prod on Cosmos: `172.16.0.0/12,10.0.0.0/8,192.168.0.0/16` (Docker bridge ranges; container is network-isolated so only Cosmos can reach it). |
-| `RECIPES_MAX_UPLOAD_BYTES` | no | `10485760` (10 MiB) | per image file |
-| `RECIPES_MAX_REQUEST_BYTES` | no | `26214400` (25 MiB) | whole request body cap (`http.MaxBytesReader`) |
-| `RECIPES_LOG_LEVEL` | no | `info` | `debug|info|warn|error` |
-| `RECIPES_LOG_FORMAT` | no | `json` | `json|text` (`text` in dev) |
-| `RECIPES_BACKUP_KEEP` | no | `7` | number of snapshots kept in `/data/backups` |
-| `RECIPES_BACKUP_INTERVAL` | no | `24h` | in-process scheduled snapshot; `0` disables |
-| `TZ` | no | `UTC` | e.g. `Asia/Jerusalem` / `Europe/London` (only affects log/backup filenames) |
+| Variable | Dev (`deploy/dev`) | Production (Cosmos) |
+|---|---|---|
+| `APP_BASE_URL` | `http://localhost:8080` | `https://recipes.<domain>` |
+| `OIDC_ISSUER_URL` | `http://auth.localhost:9000/application/o/recipes/` (mock: `http://auth.localhost:9090/default`) | `https://auth.<domain>/application/o/recipes/` |
+| `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | from `.env` (blueprint uses the same values) | from the Authentik provider |
+| `OIDC_ALLOWED_GROUPS` | `recipes-users,recipes-admins` | `recipes-users,recipes-admins` |
+| `OIDC_ADMIN_GROUP` | `recipes-admins` | `recipes-admins` |
+| `APP_TRUSTED_PROXIES` | empty | `172.16.0.0/12,10.0.0.0/8,192.168.0.0/16` (Docker bridge ranges; the container is network-isolated so only Cosmos reaches it) |
+| `LOG_FORMAT` / `LOG_LEVEL` | `text` / `debug` | `json` / `info` |
+| `TZ` | host default | e.g. `Asia/Jerusalem` |
+| `GOMEMLIMIT` | — | `300MiB` |
 
-The app must log (at startup, info level) the effective non-secret configuration and **must never log secrets**.
+There is no session secret: sessions are opaque random tokens stored hashed in the DB (`20 §5.3`).
 
 ---
 
@@ -162,7 +154,7 @@ e2e tests and quick UI work (no setup, any username accepted, claims configurabl
   `extra_hosts: ["auth.localhost:host-gateway"]`, and Authentik publishes port 9000 on the host. Discovery,
   token exchange and JWKS then use exactly the issuer URL the browser sees. (Works on Docker Engine ≥ 20.10 and Docker Desktop.)
 - Authentik allows `http://` redirect URIs; plain-HTTP localhost is fine for dev. Cookies use `Secure=false`
-  automatically because `RECIPES_BASE_URL` is `http://`. Session cookie must be `SameSite=Lax` so it
+  automatically because `APP_BASE_URL` is `http://`. Session cookie must be `SameSite=Lax` so it
   survives the top-level redirect back from the IdP.
 - Running the app on the host (`task dev:run`, `go run`) uses the same env values; `auth.localhost`
   resolves to loopback on most Linux systems (systemd-resolved), otherwise add the hosts entry.
@@ -190,9 +182,8 @@ PG_PASS=devpostgres-change-me
 AUTHENTIK_SECRET_KEY=dev-secret-key-change-me-at-least-50-chars-long-xxxxxxxxxxxx
 AUTHENTIK_BOOTSTRAP_PASSWORD=admin
 AUTHENTIK_BOOTSTRAP_EMAIL=admin@example.test
-RECIPES_OIDC_CLIENT_ID=recipes-dev
-RECIPES_OIDC_CLIENT_SECRET=recipes-dev-secret
-RECIPES_SESSION_KEY=ZGV2LXNlc3Npb24ta2V5LWRldi1zZXNzaW9uLWtleS1kZXYtc2Vzc2lvbg==
+OIDC_CLIENT_ID=recipes-dev
+OIDC_CLIENT_SECRET=recipes-dev-secret
 ```
 
 ### 4.5 `deploy/dev/docker-compose.yml` (spec block)
@@ -209,8 +200,8 @@ x-authentik-env: &authentik-env
   AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
   AUTHENTIK_DISABLE_UPDATE_CHECK: "true"
   # consumed by the blueprint via !Env
-  RECIPES_OIDC_CLIENT_ID: ${RECIPES_OIDC_CLIENT_ID}
-  RECIPES_OIDC_CLIENT_SECRET: ${RECIPES_OIDC_CLIENT_SECRET}
+  OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+  OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
 
 services:
   app:
@@ -222,16 +213,15 @@ services:
     profiles: ["", "authentik"]       # default profile
     ports: ["8080:8080"]
     environment:
-      RECIPES_BASE_URL: http://localhost:8080
-      RECIPES_OIDC_ISSUER: http://auth.localhost:9000/application/o/recipes/
-      RECIPES_OIDC_CLIENT_ID: ${RECIPES_OIDC_CLIENT_ID}
-      RECIPES_OIDC_CLIENT_SECRET: ${RECIPES_OIDC_CLIENT_SECRET}
-      RECIPES_OIDC_ADMIN_GROUPS: recipes-admins
-      RECIPES_OIDC_ALLOWED_GROUPS: recipes-users,recipes-admins
-      RECIPES_SESSION_KEY: ${RECIPES_SESSION_KEY}
-      RECIPES_LOG_LEVEL: debug
-      RECIPES_LOG_FORMAT: text
-      RECIPES_TRUSTED_PROXIES: ""
+      APP_BASE_URL: http://localhost:8080
+      OIDC_ISSUER_URL: http://auth.localhost:9000/application/o/recipes/
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_ADMIN_GROUP: recipes-admins
+      OIDC_ALLOWED_GROUPS: recipes-users,recipes-admins
+      LOG_LEVEL: debug
+      LOG_FORMAT: text
+      APP_TRUSTED_PROXIES: ""
     extra_hosts:
       - "auth.localhost:host-gateway"
     volumes:
@@ -305,13 +295,12 @@ services:
     profiles: ["mock"]
     ports: ["8080:8080"]
     environment:
-      RECIPES_BASE_URL: http://localhost:8080
-      RECIPES_OIDC_ISSUER: http://auth.localhost:9090/default
-      RECIPES_OIDC_CLIENT_ID: recipes-dev
-      RECIPES_OIDC_CLIENT_SECRET: anything
-      RECIPES_OIDC_ADMIN_GROUPS: recipes-admins
-      RECIPES_SESSION_KEY: ${RECIPES_SESSION_KEY}
-      RECIPES_LOG_FORMAT: text
+      APP_BASE_URL: http://localhost:8080
+      OIDC_ISSUER_URL: http://auth.localhost:9090/default
+      OIDC_CLIENT_ID: recipes-dev
+      OIDC_CLIENT_SECRET: anything
+      OIDC_ADMIN_GROUP: recipes-admins
+      LOG_FORMAT: text
     extra_hosts: ["auth.localhost:host-gateway"]
     volumes: [app-data-mock:/data]
 
@@ -368,8 +357,8 @@ entries:
     identifiers: { name: recipes-dev }
     attrs:
       client_type: confidential
-      client_id: !Env RECIPES_OIDC_CLIENT_ID
-      client_secret: !Env RECIPES_OIDC_CLIENT_SECRET
+      client_id: !Env OIDC_CLIENT_ID
+      client_secret: !Env OIDC_CLIENT_SECRET
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
@@ -379,6 +368,7 @@ entries:
       access_token_validity: minutes=10
       redirect_uris:
         - { url: "http://localhost:8080/auth/callback", matching_mode: strict }
+        - { url: "http://localhost:8080/auth/logged-out", matching_mode: strict }   # post-logout redirect
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
@@ -461,26 +451,25 @@ Replace `<…>` placeholders. Field names follow the cosmos-compose format as ex
       "restart": "unless-stopped",
       "read_only": true,
       "environment": [
-        "RECIPES_BASE_URL=https://recipes.<domain>",
-        "RECIPES_OIDC_ISSUER=https://auth.<domain>/application/o/recipes/",
-        "RECIPES_OIDC_CLIENT_ID=<from-authentik>",
-        "RECIPES_OIDC_CLIENT_SECRET=<from-authentik>",
-        "RECIPES_OIDC_ALLOWED_GROUPS=recipes-users,recipes-admins",
-        "RECIPES_OIDC_ADMIN_GROUPS=recipes-admins",
-        "RECIPES_SESSION_KEY=<openssl rand -base64 48>",
-        "RECIPES_TRUSTED_PROXIES=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16",
-        "RECIPES_MAX_UPLOAD_BYTES=10485760",
-        "RECIPES_BACKUP_INTERVAL=24h",
-        "RECIPES_BACKUP_KEEP=7",
+        "APP_BASE_URL=https://recipes.<domain>",
+        "OIDC_ISSUER_URL=https://auth.<domain>/application/o/recipes/",
+        "OIDC_CLIENT_ID=<from-authentik>",
+        "OIDC_CLIENT_SECRET=<from-authentik>",
+        "OIDC_ALLOWED_GROUPS=recipes-users,recipes-admins",
+        "OIDC_ADMIN_GROUP=recipes-admins",
+        "APP_TRUSTED_PROXIES=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16",
+        "BACKUP_AT=03:30",
+        "BACKUP_KEEP=7",
+        "GOMEMLIMIT=300MiB",
         "TZ=Asia/Jerusalem"
       ],
       "labels": {
         "cosmos-force-network-secured": "true",
         "cosmos-auto-update": "false",
-        "cosmos-icon": "https://recipes.<domain>/static/icon-192.png"
+        "cosmos-icon": "https://recipes.<domain>/icon-192.png"
       },
       "volumes": [
-        { "type": "volume", "source": "recipes-data", "target": "/data" }
+        { "type": "bind", "source": "/srv/recipes/data", "target": "/data" }
       ],
       "deploy": { "resources": { "limits": { "cpus": "1.0", "memory": "384M" } } },
       "routes": [
@@ -507,7 +496,7 @@ Replace `<…>` placeholders. Field names follow the cosmos-compose format as ex
       ]
     }
   },
-  "volumes": { "recipes-data": {} }
+  "volumes": {}
 }
 ```
 
@@ -521,12 +510,12 @@ Prerequisites: Cosmos installed with HTTPS working; DNS `recipes.<domain>` and `
 1. **Build & push** on a dev machine: `task docker:release VERSION=1.0.0` (multi-arch push, §9).
    If the registry is private, add credentials in Cosmos (*ServApps → Docker registry auth* / `docker login` on the host).
 2. **Authentik**: create the production provider/application (§6.2–6.5); copy client id/secret.
-3. **Generate the session key**: `openssl rand -base64 48`.
+3. (No app secret to generate: the only secret is the OIDC client secret.)
 4. **Create the ServApp**: *ServApps → Create → Import compose*, paste §5.3 with real values. Alternatively
-   the *Create ServApp* form: image, name `recipes`, env vars (§3), volume `recipes-data` → `/data`,
+   the *Create ServApp* form: image, name `recipes`, env vars (§3), bind mount `/srv/recipes/data` → `/data`,
    *Isolate network* on, no published ports.
-   - Named volume (recommended): Docker copies the image's `/data` (owned 65532) into it automatically.
-   - Bind mount alternative (easier host-side backups): `mkdir -p /srv/recipes/data && chown -R 65532:65532 /srv/recipes/data`, then mount `/srv/recipes/data:/data`.
+   - **Bind mount (production default, needed for host backups §8.3)**: `mkdir -p /srv/recipes/data && chown -R 65532:65532 /srv/recipes/data`, then mount `/srv/recipes/data:/data`.
+   - Named volume (alternative without host backups): Docker copies the image's `/data` (owned 65532) into it automatically.
 5. **Route**: if not created by import, *URLs → Create URL*: target type ServApp → `recipes`, port `8080`,
    host `recipes.<domain>`; **Authentication: OFF**; SmartShield: ON; Timeout 120 s; no path prefix
    (the app assumes it is served at `/`).
@@ -536,19 +525,16 @@ Prerequisites: Cosmos installed with HTTPS working; DNS `recipes.<domain>` and `
    - `https://recipes.<domain>/healthz` → `200 ok` (unauthenticated).
    - Cosmos ServApp shows *healthy*.
    - Login as a `recipes-users` member → lands on recipe list; a non-member gets Authentik's "access denied".
-   - Upload a ~8 MB photo; create an API token and call `GET /api/v1/...` with `curl -H "Authorization: Bearer …"`.
+   - Upload a ~8 MB photo; create an API token and call `GET /api/v1/categories` with `curl -H "Authorization: Bearer …"`.
    - Logs (*ServApps → recipes → Logs*) show no secret values.
 
 ### 5.5 Proxy headers & trusted proxy behaviour (app requirements)
 
 - Cosmos (Go `httputil.ReverseProxy`) forwards `X-Forwarded-For`; depending on version/route options it may
   also set `X-Forwarded-Proto`/`X-Forwarded-Host` (`VerboseForwardHeader` adds more). **The app must not depend on them.**
-- App rules:
-  1. Scheme/host for redirects, OIDC `redirect_uri`, links in API responses, cookie `Secure` → from `RECIPES_BASE_URL` only.
-  2. Client IP (logs, rate limiting, audit) = right-most untrusted address in `X-Forwarded-For`, **only if** the TCP peer is inside `RECIPES_TRUSTED_PROXIES`; else the TCP peer address.
-  3. Set `Strict-Transport-Security` only when `BASE_URL` is https (Cosmos header hardening may also add it; duplicates are harmless).
-  4. Ignore `X-Cosmos-*` identity headers entirely (Cosmos auth is off; trusting them would be a spoofing risk).
-- Host header check: the app should reject (400) requests whose `Host` differs from `BASE_URL`'s host, except `/healthz`/`/readyz` (Docker healthcheck uses `127.0.0.1`). Keep "Spoof hostname"/"Overwrite Host header" OFF on the route so the original host is passed.
+- The app's rules for absolute URLs, client IP and the Host check are in `20 §4`. The app ignores `X-Cosmos-*`
+  identity headers entirely (Cosmos auth is off; trusting them would be a spoofing risk).
+- Keep "Spoof hostname"/"Overwrite Host header" OFF on the route so the original `Host` reaches the app's Host check.
 
 ### 5.6 Container → Authentik connectivity
 
@@ -556,12 +542,13 @@ The app container must reach `https://auth.<domain>` (discovery, JWKS, token end
 public DNS and the router's hairpin NAT. If the router lacks hairpin NAT (timeouts in logs at startup):
 add `extra_hosts: ["auth.<domain>:host-gateway"]` so the request hits Cosmos's :443 on the host directly; the
 TLS cert remains valid. The app must start even if Authentik is temporarily unreachable (lazy/retrying OIDC
-discovery; `/readyz` reports degraded) so a reboot order race does not crash-loop it.
+discovery; `/readyz` reports `oidc: pending`, `20 §13`) so a reboot order race does not crash-loop it.
 
 ### 5.7 Upload size, timeouts, SmartShield
 
 - Cosmos has no nginx-style `client_max_body_size`; request size is enforced **by the app**
-  (`RECIPES_MAX_REQUEST_BYTES`, `RECIPES_MAX_UPLOAD_BYTES`) → `413` with a localized message.
+  (`MAX_IMAGE_MB`, `API_MAX_BODY_MB`, `20 §8`) → `413` with a localized message. Browsers resize photos before
+  upload (`20 §9`), so typical uploads are < 1 MB.
 - Keep route `MaxBandwidth = 0` (unlimited) and Timeout ≥ 120 s for slow mobile uploads over garden Wi-Fi.
 - SmartShield may throttle bursts (e.g. assistant bulk submissions or a page loading many thumbnails). If
   users see `429`/blocked responses, raise the route throttle or add the assistant's IP/user to SmartShield
@@ -573,7 +560,7 @@ discovery; `/readyz` reports degraded) so a reboot order race does not crash-loo
 
 | Resource | Limit | Reason |
 |---|---|---|
-| Memory | 384 MiB (reservation 64 MiB) | Go + SQLite are small; headroom for image decoding/resizing of 10 MB photos. If server-side resizing is not implemented, 256 MiB suffices. Set `GOMEMLIMIT` ≈ 80% of limit (e.g. `300MiB`). |
+| Memory | 384 MiB (reservation 64 MiB) | Go + SQLite are small; headroom for one image decode at a time (`IMAGE_WORKERS=1`, ≤ 50 MP ≈ 200 MB). `GOMEMLIMIT=300MiB`. |
 | CPU | 1.0 | image resizing bursts |
 | PIDs | 256 | |
 | Disk | volume on host disk; alert when < 1 GB free (Cosmos monitoring) | images dominate; ~1–3 MB per recipe |
@@ -596,9 +583,9 @@ discovery; `/readyz` reports degraded) so a reboot order race does not crash-loo
 
 ### 6.2 Groups (optional but recommended)
 
-*Directory → Groups → Create*: `recipes-users` (may use the app), `recipes-admins` (app admin features, if any
-are defined in architecture). Add household members. If the owner prefers "every Authentik user may use
-the app", skip groups and the binding in §6.5 and leave `RECIPES_OIDC_ALLOWED_GROUPS` empty.
+*Directory → Groups → Create*: `recipes-users` (may use the app), `recipes-admins` (may manage the category list,
+`20 §7`). Add household members. If the owner prefers "every Authentik user may use
+the app", skip groups and the binding in §6.5 and leave `OIDC_ALLOWED_GROUPS` empty.
 
 ### 6.3 Provider + application (wizard)
 
@@ -611,8 +598,8 @@ the app", skip groups and the binding in §6.5 and leave `RECIPES_OIDC_ALLOWED_G
    - Client type **Confidential**; copy **Client ID** and **Client Secret**.
    - Redirect URIs: `strict` → `https://recipes.<domain>/auth/callback`. (Do **not** add localhost here; see §6.6.)
    - **Signing key**: `authentik Self-signed Certificate` (or a dedicated key). Required — without it Authentik signs ID tokens with HS256 using the client secret; the app expects **RS256** via JWKS.
-   - Advanced: Subject mode `Based on the User's hashed ID` (stable `sub`, the app keys users by `iss`+`sub`); **Include claims in id_token: ON**; Issuer mode `Each provider has a different issuer` (default); Access code validity 1 min; Access token validity 10 min; Refresh token validity per architecture's session design (e.g. 30 days if `offline_access` is used).
-   - Scopes (property mappings): `openid`, `email`, `profile` (the default `profile` mapping includes the `groups` claim with group names). Add `offline_access` only if architecture requires refresh tokens.
+   - Advanced: Subject mode `Based on the User's hashed ID` (stable `sub`, the app keys users by `iss`+`sub`); **Include claims in id_token: ON**; Issuer mode `Each provider has a different issuer` (default); Access code validity 1 min; Access token validity 10 min. Refresh tokens are not used (the app keeps its own session, `20 §5.3`).
+   - Scopes (property mappings): `openid`, `email`, `profile` (the default `profile` mapping includes the `groups` claim with group names). Do not add `offline_access`.
    - PKCE: the app always sends `code_challenge_method=S256`; Authentik accepts it for confidential clients.
 4. Bindings: see §6.5. Save.
 
@@ -620,19 +607,31 @@ the app", skip groups and the binding in §6.5 and leave `RECIPES_OIDC_ALLOWED_G
 
 | Authentik | App env |
 |---|---|
-| `https://auth.<domain>/application/o/recipes/` (OpenID Configuration Issuer shown on provider page) | `RECIPES_OIDC_ISSUER` |
-| Client ID | `RECIPES_OIDC_CLIENT_ID` |
-| Client Secret | `RECIPES_OIDC_CLIENT_SECRET` |
-| End session URL `https://auth.<domain>/application/o/recipes/end-session/` | discovered automatically (`end_session_endpoint`); app's logout redirects there with `id_token_hint` and `post_logout_redirect_uri=${BASE_URL}/` |
+| `https://auth.<domain>/application/o/recipes/` (OpenID Configuration Issuer shown on provider page) | `OIDC_ISSUER_URL` |
+| Client ID | `OIDC_CLIENT_ID` |
+| Client Secret | `OIDC_CLIENT_SECRET` |
+| End session URL `https://auth.<domain>/application/o/recipes/end-session/` | discovered automatically (`end_session_endpoint`); app's logout redirects there with `id_token_hint` and `post_logout_redirect_uri=${APP_BASE_URL}/auth/logged-out` |
 
-If the Authentik version supports typed redirect URIs, also add `https://recipes.<domain>/` as a
-**post-logout** redirect URI.
+Also add `https://recipes.<domain>/auth/logged-out` (strict) to the provider's redirect URIs so the post-logout
+redirect is accepted.
 
 ### 6.5 Access restriction
 
-*Application `recipes` → Policy / Group / User Bindings → Bind existing group*: `recipes-users` and
-`recipes-admins` (policy engine mode *any*). Non-members are stopped by Authentik before a code is issued.
-The app's `RECIPES_OIDC_ALLOWED_GROUPS` is a second line of defence (shows a friendly "not authorised" page).
+The **primary** gate is the app's `OIDC_ALLOWED_GROUPS` check (`20 §5.2`): a household member who is not yet in
+`recipes-users` signs in successfully at Authentik and then sees the app's friendly page "You can't get in yet.
+Ask Lior to add you." (story A3).
+
+Optional defence in depth: *Application `recipes` → Policy / Group / User Bindings → Bind existing group*
+`recipes-users` and `recipes-admins` (policy engine mode *any*). Then non-members are stopped by Authentik with
+Authentik's own "access denied" page instead of the friendly one. Recommended only if the Authentik instance has
+users outside the household.
+
+### 6.5a Forgotten passwords
+
+**Decision (owner): no self-service recovery; Lior resets passwords manually** in *Authentik → Directory → Users →
+<user> → Set password* (or sends a one-time *recovery link* from the same page and shares it over WhatsApp).
+No recovery flow or SMTP is configured. The app's sign-in page shows the line "Forgot your password? Ask Lior."
+(`70 §4.10`).
 
 ### 6.6 Dev against the production Authentik (optional)
 
@@ -643,7 +642,7 @@ redirect URIs to the production provider.
 
 ### 6.7 Verification checklist
 
-- Discovery JSON loads and `issuer` equals `RECIPES_OIDC_ISSUER` byte-for-byte.
+- Discovery JSON loads and `issuer` equals `OIDC_ISSUER_URL` byte-for-byte.
 - *Provider → Preview* (or log in once and inspect via app debug log at `debug` level) shows claims `sub`, `email`, `name`, `preferred_username`, `groups`.
 - `id_token` header `alg` = `RS256`, `kid` present in JWKS.
 
@@ -660,30 +659,48 @@ redirect URIs to the production provider.
 
 ### 8.1 What to back up
 
-`/data/recipes.db` (consistent snapshot, **never** a raw file copy of a live WAL DB) and `/data/images/`.
+`/data/recipes.db` (consistent snapshot, **never** a raw file copy of a live WAL DB) and `/data/media/`.
 `/data/tmp` is disposable. `/data/backups` holds the snapshots themselves.
 
 ### 8.2 Online backup (app responsibility)
 
-- Subcommand: `recipes backup [--out /data/backups]` — opens the DB read-only and runs
-  `VACUUM INTO '/data/backups/recipes-YYYYMMDDTHHMMSSZ.db'` (safe while the server is running in WAL mode;
-  produces a compact, consistent single file), runs `PRAGMA integrity_check` on the result, then
-  writes `…/recipes-<ts>.images.txt` (list of image files referenced) and prunes snapshots beyond `RECIPES_BACKUP_KEEP`.
-- The same routine runs in-process every `RECIPES_BACKUP_INTERVAL` (default 24 h) while `serve` is up.
+- Behaviour of `recipes backup` and the daily in-process run (`BACKUP_AT`): `20 §16`.
 - Run manually on Cosmos/host (distroless has no shell, exec the binary directly):
   `docker exec recipes /app/recipes backup`
-- Images are immutable files (never modified in place; hard-deleted with their recipe). Copy them **after**
-  the DB snapshot. A rare race (image deleted between snapshot and copy) yields a missing file; the app must
-  render a placeholder for a missing image file instead of erroring.
+- Media files are immutable (never modified in place; hard-deleted with their recipe). Copy them **after**
+  the DB snapshot. A rare race (image deleted between snapshot and copy) yields a missing file, which the app
+  renders as a placeholder (`20 §9`).
 
 ### 8.3 Off-host copy
 
-The in-volume snapshots do not protect against disk loss. Off-host options (pick one, see open questions):
-- **Cosmos built-in backups** (Restic-based, in recent Cosmos versions): add the `recipes-data` volume (or
-  bind path) to a backup job with a remote/second-disk repository, scheduled after the app's daily snapshot
-  (e.g. app 02:00 UTC, Cosmos backup 03:00). Exclude `recipes.db-wal`, `recipes.db-shm`, `recipes.db` and `tmp/` from the job
-  — the snapshots in `backups/` are the consistent copies.
-- **Host cron + restic/rsync** of the bind-mount path with the same exclusions.
+The in-volume snapshots do not protect against disk loss. **Decision (owner): host cron + restic.** Production
+therefore uses the **bind mount** `/srv/recipes/data:/data` (§5.4 alternative) so the host can read the files
+directly.
+
+Host setup (root crontab on the Cosmos host), running after the app's daily snapshot (`BACKUP_AT=03:30`):
+
+```bash
+# /etc/cron.d/recipes-backup
+45 4 * * * root /usr/local/bin/recipes-offsite-backup.sh >> /var/log/recipes-backup.log 2>&1
+```
+
+```bash
+#!/bin/sh
+# /usr/local/bin/recipes-offsite-backup.sh
+set -eu
+export RESTIC_REPOSITORY=<repo, e.g. sftp:backup@nas:/restic/recipes or s3:…>
+export RESTIC_PASSWORD_FILE=/root/.restic-recipes-pass
+DATA=/srv/recipes/data
+restic backup "$DATA/backups" "$DATA/media" --tag recipes
+restic forget --tag recipes --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune
+```
+
+- Only `backups/` (consistent DB snapshots) and `media/` are copied; the live `recipes.db`, `-wal`, `-shm` and `tmp/`
+  are never copied.
+- Monthly: `restic check`, and a test restore of the newest snapshot into a scratch directory (`restic restore latest
+  --target /tmp/recipes-restore-test`), opening the DB with `sqlite3 … 'PRAGMA integrity_check'`.
+- rsync to a second disk is an acceptable substitute for restic (`rsync -a --delete` of the same two directories),
+  but keeps no history.
 
 ### 8.4 Restore
 
@@ -691,7 +708,7 @@ The in-volume snapshots do not protect against disk loss. Off-host options (pick
 2. Copy the desired snapshot over the live DB and remove WAL/SHM:
    `recipes.db` ← `backups/recipes-<ts>.db`; delete `recipes.db-wal`, `recipes.db-shm`.
    (With a named volume, use a helper container: `docker run --rm -v recipes-data:/data -u 65532 busybox sh -c 'cp /data/backups/recipes-<ts>.db /data/recipes.db && rm -f /data/recipes.db-wal /data/recipes.db-shm'`.)
-3. Restore `images/` from the off-host copy if lost (extra orphan images are harmless; a startup/maintenance job may GC unreferenced images older than 24 h).
+3. Restore `media/` from the off-host copy if lost (extra orphan files are harmless; the nightly sweeper removes them, `20 §9`).
 4. Ensure ownership `65532:65532`. Start the ServApp; check `/readyz` and log in.
 5. If the snapshot predates a schema migration, the app migrates it forward on start. Restoring a DB **newer** than the binary is refused (see §8.5).
 
@@ -699,7 +716,7 @@ The in-volume snapshots do not protect against disk loss. Off-host options (pick
 
 - Images are tagged `X.Y.Z` (immutable) plus `X.Y` and `latest` moving tags; Cosmos uses the **exact** tag.
 - Steps: (1) read release notes; (2) `docker exec recipes /app/recipes backup`; (3) Cosmos *ServApps → recipes → Docker/Settings*: change image tag → *Update/Recreate* (Cosmos pulls and recreates the container, keeping volume, env, route); (4) watch logs for migration success and healthy status; (5) smoke test login + a recipe page.
-- App behaviour: on `serve`, apply pending migrations in a transaction (forward-only, recorded in a `schema_migrations` table); if the DB's schema version is higher than the binary knows, **refuse to start** with a clear error (prevents downgrade corruption).
+- App behaviour on `serve`: `20 §14` (forward-only goose migrations; refuses to start on a DB newer than the binary).
 - Rollback: stop, restore the pre-upgrade snapshot (§8.4), set the previous tag, start.
 - `cosmos-auto-update` stays `false` so migrations happen only when the admin intends; enabling it with a moving `X.Y` tag is acceptable for patch releases if the owner prefers.
 
@@ -707,8 +724,8 @@ The in-volume snapshots do not protect against disk loss. Off-host options (pick
 
 ## 9. Taskfile targets (build/deploy subset)
 
-Taskfile at repo root; variables overridable (`task docker:release VERSION=1.2.3`). Other targets
-(test, lint, generate) belong to the architecture/testing specs.
+Reference implementation of the deployment-related targets listed in `20 §18` (that list is canonical;
+names here must match it). Variables are overridable (`task docker:release VERSION=1.2.3`).
 
 ```yaml
 version: "3"
@@ -718,6 +735,8 @@ vars:
   VERSION: '{{.VERSION | default "dev"}}'
   COMMIT:
     sh: git rev-parse --short HEAD 2>/dev/null || echo unknown
+  DATE:
+    sh: date -u +%Y-%m-%dT%H:%M:%SZ
   PLATFORMS: linux/amd64,linux/arm64
   DEV_COMPOSE: docker compose -f deploy/dev/docker-compose.yml --env-file deploy/dev/.env
 
@@ -725,12 +744,7 @@ tasks:
   docker:build:
     desc: Build local single-arch image {{.IMAGE}}:{{.VERSION}}
     cmds:
-      - docker build --build-arg VERSION={{.VERSION}} --build-arg COMMIT={{.COMMIT}} -t {{.IMAGE}}:{{.VERSION}} -t recipe-keeper:dev .
-
-  docker:run:
-    desc: Run the image alone (needs deploy/dev/.env and a reachable IdP)
-    cmds:
-      - docker run --rm -p 8080:8080 --env-file deploy/dev/app.env -v recipes-local:/data {{.IMAGE}}:{{.VERSION}}
+      - docker build --build-arg VERSION={{.VERSION}} --build-arg COMMIT={{.COMMIT}} --build-arg DATE={{.DATE}} -t {{.IMAGE}}:{{.VERSION}} -t recipe-keeper:dev .
 
   docker:release:
     desc: Multi-arch build and push {{.IMAGE}}:{{.VERSION}} (+ X.Y and latest)
@@ -740,7 +754,7 @@ tasks:
     cmds:
       - >
         docker buildx build --platform {{.PLATFORMS}} --push
-        --build-arg VERSION={{.VERSION}} --build-arg COMMIT={{.COMMIT}}
+        --build-arg VERSION={{.VERSION}} --build-arg COMMIT={{.COMMIT}} --build-arg DATE={{.DATE}}
         -t {{.IMAGE}}:{{.VERSION}} -t {{.IMAGE}}:{{splitList "." .VERSION | initial | join "."}} -t {{.IMAGE}}:latest .
 
   dev:init:
@@ -750,7 +764,6 @@ tasks:
       - cp deploy/dev/.env.example deploy/dev/.env
       - sed -i "s|^PG_PASS=.*|PG_PASS=$(openssl rand -hex 16)|" deploy/dev/.env
       - sed -i "s|^AUTHENTIK_SECRET_KEY=.*|AUTHENTIK_SECRET_KEY=$(openssl rand -base64 60 | tr -d '\n')|" deploy/dev/.env
-      - sed -i "s|^RECIPES_SESSION_KEY=.*|RECIPES_SESSION_KEY=$(openssl rand -base64 48 | tr -d '\n')|" deploy/dev/.env
 
   dev:up:
     desc: Start app + local Authentik (http://localhost:8080, IdP http://auth.localhost:9000, users alice/alice, bob/bob)
@@ -770,10 +783,13 @@ tasks:
       - '{{.DEV_COMPOSE}} up -d postgresql authentik-server authentik-worker'
       - go run ./cmd/recipes serve
     env:
-      RECIPES_BASE_URL: http://localhost:8080
-      RECIPES_OIDC_ISSUER: http://auth.localhost:9000/application/o/recipes/
-      RECIPES_DATA_DIR: ./dev-data
-      RECIPES_LOG_FORMAT: text
+      APP_BASE_URL: http://localhost:8080
+      OIDC_ISSUER_URL: http://auth.localhost:9000/application/o/recipes/
+      APP_DATA_DIR: ./dev-data
+      APP_ENV: development
+      APP_TEMPLATES_DIR: ./web
+      TMPDIR: ./dev-data/tmp
+      LOG_FORMAT: text
     dotenv: [deploy/dev/.env]
 
   dev:logs:
@@ -790,10 +806,6 @@ tasks:
   dev:backup:
     desc: Take an online backup inside the dev app container
     cmds: ['{{.DEV_COMPOSE}} exec app /app/recipes backup']
-
-  secrets:session-key:
-    desc: Print a new RECIPES_SESSION_KEY
-    cmds: ['openssl rand -base64 48']
 ```
 
 ---
@@ -804,7 +816,7 @@ tasks:
 2. `task dev:up:mock` works without Authentik.
 3. Image runs as UID 65532, read-only rootfs, on amd64 and arm64; `docker inspect` shows a healthy status.
 4. With an empty named volume the app starts without permission errors; with a root-owned bind mount it exits with a clear "data dir not writable" error.
-5. Behind Cosmos with Cosmos auth OFF: browser login works over HTTPS, cookies are `Secure; HttpOnly; SameSite=Lax`, the API works with a bearer token, a 10 MB image uploads, an 11 MB image gets `413`.
+5. Behind Cosmos with Cosmos auth OFF: browser login works over HTTPS, cookies are `Secure; HttpOnly; SameSite=Lax`, the API works with a bearer token, a 15 MB image uploads (with JS disabled, i.e. no client resize), a 16 MB image gets `413`.
 6. Spoofed `X-Forwarded-For` from an untrusted peer is ignored; `X-Forwarded-Host` never changes generated URLs.
 7. `docker exec recipes /app/recipes backup` produces a snapshot passing `integrity_check` while the app is serving writes; restore procedure §8.4 recovers it.
 8. Upgrading the tag keeps data; a downgrade to a binary with an older schema refuses to start.

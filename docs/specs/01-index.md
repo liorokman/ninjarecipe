@@ -1,62 +1,66 @@
-# 01 — System Specification Index & Architecture Overview
+# 01 — Specification Index
 
-This directory contains the authoritative, implementation-ready specifications for the **Ninja Woodfire Recipe Keeper** application.
-It is structured so that an AI model or engineering team can implement the system end-to-end without ambiguity.
+Implementation-ready specification of the **Ninja Woodfire Recipe Keeper**. It is written so that an engineer or an
+AI model can implement the system without further context.
 
----
+## Documents
 
-## Specification Documents
-
-| Spec # | Document | Role / Domain | Key Contents |
+| # | Document | Audience | Contents |
 |---|---|---|---|
-| **00** | [00-brief.md](file:///home/lior/Projects/cooking/docs/specs/00-brief.md) | Ground Truth | Original user requirements, verified hardware constraints, core principles |
-| **10** | [10-user-stories.md](file:///home/lior/Projects/cooking/docs/specs/10-user-stories.md) | End-User (Non-technical) | Personas, user journeys, outdoor UX at the oven, bilingual (EN/HE) expectations, frustrations to avoid |
-| **20** | [20-architecture.md](file:///home/lior/Projects/cooking/docs/specs/20-architecture.md) | System Architect | Core system design, Go + SSR + htmx, OIDC authentication code flow, security, repo structure |
-| **25** | [25-oven-settings.md](file:///home/lior/Projects/cooking/docs/specs/25-oven-settings.md) | Hardware / Oven Domain | Complete specification of Ninja Woodfire OO101UK settings, modes, pizza presets, smoke pellets, ranges |
-| **30** | [30-data-model.md](file:///home/lior/Projects/cooking/docs/specs/30-data-model.md) | DB & Data Architect | Pure-Go SQLite schema (WAL mode), goose migrations, FTS5 trigram search, cascade deletion rules |
-| **40** | [40-api.md](file:///home/lior/Projects/cooking/docs/specs/40-api.md) | API & Protocol Lead | Full HTTP routes, JSON REST API for local AI assistant import (`/api/v1/inbox`), RFC 7807 errors |
-| **50** | [50-deployment-cosmos.md](file:///home/lior/Projects/cooking/docs/specs/50-deployment-cosmos.md) | Cosmos Cloud Admin | Dockerfile (distroless), Cosmos Server servapp setup, Authentik OIDC configuration, backups |
-| **60** | [60-backend-golang.md](file:///home/lior/Projects/cooking/docs/specs/60-backend-golang.md) | Go Lead Developer | Package breakdown, CGO_ENABLED=0, connection pools, image pipeline (CatmullRom), LLM extension hook, Taskfile |
-| **70** | [70-ui-frontend.md](file:///home/lior/Projects/cooking/docs/specs/70-ui-frontend.md) | Lightweight UI Specialist | htmx 2.x reactive flows, bilingual Hebrew RTL styling, Screen Wake Lock API for outdoor cooking, mobile layouts |
-| **--** | [open-questions.md](file:///home/lior/Projects/cooking/docs/specs/open-questions.md) | Cross-functional Team | Open architectural questions and proposed defaults for household confirmation |
+| 00 | [00-brief.md](00-brief.md) | everyone | The owner's original requirements (never edited) |
+| — | [open-questions.md](open-questions.md) | everyone | Decisions log (changes to the brief) and remaining open questions |
+| 10 | [10-user-stories.md](10-user-stories.md) | everyone | Personas, stories with acceptance criteria, wording, Must/Nice |
+| 20 | [20-architecture.md](20-architecture.md) | architect, Go | System design, auth, authz, security, images, i18n, search, config, CLI, Taskfile |
+| 25 | [25-oven-settings.md](25-oven-settings.md) | Go, UI | Ninja Woodfire OO101UK modes, stage fields, validation table, labels |
+| 30 | [30-data-model.md](30-data-model.md) | Go | SQLite schema, migrations, lifecycle/deletion rules, derived values |
+| 40 | [40-api.md](40-api.md) | Go, UI, assistant | Every HTML route and JSON endpoint, payloads, errors |
+| 50 | [50-deployment-cosmos.md](50-deployment-cosmos.md) | operator | Dockerfile, dev stack, Cosmos, Authentik, backup/restore/upgrade |
+| 60 | [60-backend-golang.md](60-backend-golang.md) | Go | Dependencies, code rules, error handling, view models, tests |
+| 70 | [70-ui-frontend.md](70-ui-frontend.md) | UI | Screens, permission flags per screen, client JS, timers, uploads, drafts, PWA, device checklist |
 
----
+## Single source of truth
 
-## System Architecture Summary
+Each concept is defined in **exactly one** document. Other documents link to it and must not restate it. When you
+change a concept, change it only in its owning document.
+
+| Concept | Canonical in |
+|---|---|
+| Requirements, personas, wording | `10` (+ decisions in `open-questions.md`) |
+| Env vars, CLI subcommands, Taskfile targets | `20 §12, §17, §18` |
+| Authentication, sessions, tokens | `20 §5–§6` |
+| Authorization rules | `20 §7` |
+| Security headers, CSP, upload limits, input limits, SSRF | `20 §8` |
+| Image processing and storage layout | `20 §9` |
+| Search semantics and normalization | `20 §11` |
+| Events and LLM hook | `20 §15` |
+| Oven modes, stage fields, validation, oven labels | `25` |
+| Tables, columns, constraints, seed data, deletion rules | `30` |
+| URLs, methods, request/response formats, status codes | `40` |
+| Docker image, compose files, Cosmos, Authentik, backup/restore procedures | `50` |
+| Dependencies, code structure, tests | `60` |
+| Screens, per-screen permission flags, client behaviour, PWA | `70` |
+
+If two documents still disagree, the canonical one wins and the other is a bug to fix.
+
+## Architecture overview
 
 ```mermaid
 flowchart TD
-    subgraph Clients["Clients & Devices"]
-        Mobile["Galaxy Phones (S26+, S25+, S23 Note)<br/>Outdoors at Oven (Touch/Wake Lock)"]
-        Tablet["Galaxy Tabs (S9, S6 Lite)<br/>Kitchen Counter (Multi-column)"]
-        Desktop["Linux & Windows PCs<br/>Desktop Browsers (Management)"]
-        AI["Local AI Assistant<br/>(Automated Web Search & Import)"]
+    subgraph Clients
+        Phone["Galaxy phones — at the oven"]
+        Tablet["Galaxy tablets — kitchen"]
+        PC["Linux/Windows PCs — planning"]
+        AI["Local AI assistant"]
     end
-
-    subgraph Cosmos["Cosmos Cloud Host"]
-        RP["Cosmos Reverse Proxy & TLS"]
-        subgraph AppContainer["Docker Container: cooking-recipes"]
-            Mux["Go 1.25 net/http Router"]
-            Auth["Auth & Session Layer (OIDC + Bearer Token)"]
-            AppLogic["Service Layer (Recipes, Oven Rules, Inbox, Search)"]
-            ImagePipe["Image Pipeline (CatmullRom Resize + EXIF Strip)"]
-            TemplateEng["Go html/template + htmx 2.x + i18n (EN/HE)"]
-        end
-        Vol[("Volume: /data<br/>recipes.db (WAL) + /media")]
+    subgraph Cosmos["Cosmos host"]
+        RP["Cosmos reverse proxy + TLS"]
+        App["recipes container: Go server (HTML + htmx, JSON API, media, jobs)"]
+        Vol[("/data: recipes.db, media/, backups/, tmp/")]
     end
-
-    subgraph Identity["Identity Provider"]
-        Authentik["Authentik (OIDC Provider)"]
-    end
-
-    Mobile & Tablet & Desktop -->|HTTPS / Web UI| RP
-    AI -->|POST /api/v1/inbox (Bearer Token)| RP
-    RP --> Mux
-    Mux --> Auth
-    Auth <-->|OIDC Auth Code + PKCE| Authentik
-    Auth --> AppLogic
-    AppLogic --> TemplateEng
-    AppLogic --> ImagePipe
-    AppLogic --> Vol
-    ImagePipe --> Vol
+    AK["Authentik (OIDC)"]
+    Phone & Tablet & PC -->|HTTPS| RP
+    AI -->|"HTTPS + bearer token"| RP
+    RP --> App
+    App --> Vol
+    App <-->|"OIDC code + PKCE"| AK
 ```

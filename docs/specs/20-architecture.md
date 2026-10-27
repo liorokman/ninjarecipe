@@ -1,35 +1,40 @@
 # 20 — System Architecture
 
-Owner: Architect. Inputs: `00-brief.md`. Companion docs: `25-oven-settings.md`, `30-data-model.md`, `40-api.md`, `50-deployment-cosmos.md` (Cosmos admin), `10-user-stories.md`.
+Owner: Architect. Inputs: `00-brief.md`, decisions in `open-questions.md`.
+Status: **canonical** for: system shape, middleware, authentication, authorization rules, security controls,
+image pipeline, i18n mechanics, search semantics, configuration (env vars), CLI subcommands, Taskfile targets,
+events/LLM hook, backups (app side), non-functional targets.
+Not here: schema (`30`), routes and payloads (`40`), oven rules (`25`), Cosmos/Authentik operations (`50`),
+Go code conventions and tests (`60`), screens and client JS (`70`).
 
 ## 1. Summary of decisions
 
 | Topic | Decision |
 |---|---|
-| Shape | **One Go binary, one container.** It serves server-rendered HTML, static assets, media, and a JSON API |
-| UI | Go `html/template` + **htmx 2.x** + a small vanilla-JS module. No SPA, no Node build step |
-| Router | Go stdlib `net/http.ServeMux` (method + path patterns, Go ≥ 1.22). Middleware is written by hand |
-| Go version | 1.25+ (needed for `http.CrossOriginProtection`). Pin the exact version in `go.mod` / `Dockerfile` |
-| DB | SQLite via **`modernc.org/sqlite`** (pure Go, `CGO_ENABLED=0`), WAL mode, file in `/data` volume |
-| Migrations | **`github.com/pressly/goose/v3`**, SQL files embedded with `embed.FS`, run automatically at startup |
-| Search | Fixed categories + free labels (structured filters) + **SQLite FTS5 `trigram`** full-text index |
-| Auth (browser) | OIDC Authorization Code + **PKCE (S256)** against Authentik via **`github.com/coreos/go-oidc/v3`** + **`golang.org/x/oauth2`**. Server-side sessions in SQLite |
-| Auth (AI assistant) | Per-user **bearer API tokens** (random, shown once, SHA-256 hashed at rest), scoped |
-| CSRF | `http.CrossOriginProtection` (Fetch-Metadata/Origin) + `SameSite=Lax` cookie + POST-only mutations |
-| Images | Filesystem under `/data/media`. Decode → auto-orient → resize → re-encode JPEG (this strips all EXIF). Served through an authz-checking handler |
-| Image libs | stdlib `image/jpeg`, `image/png`; `golang.org/x/image/webp` (decode), `golang.org/x/image/draw` (CatmullRom resize); `github.com/rwcarlsen/goexif/exif` (orientation read only) |
-| i18n | **`github.com/nicksnyder/go-i18n/v2`** with embedded TOML catalogs `en`, `he`. RTL through `<html dir>` + CSS logical properties |
-| Logging | stdlib `log/slog`, JSON to stdout |
+| Shape | **One Go binary, one container.** It serves server-rendered HTML, static assets, media and a JSON API |
+| UI | Go `html/template` + **htmx 2.x** (vendored) + small vanilla-JS modules. No SPA, no Node build step, no CDN |
+| Router | Go stdlib `net/http.ServeMux` with **method + path patterns** (`"POST /recipes/{id}/edit"`). Hand-written middleware |
+| Go version | 1.25+ (for `http.CrossOriginProtection`). Exact version pinned in `go.mod` and `Dockerfile` |
+| DB | SQLite via **`modernc.org/sqlite`** (pure Go, `CGO_ENABLED=0`), WAL, file in `/data` |
+| Migrations | **`github.com/pressly/goose/v3`**, embedded SQL, run at startup |
+| Search | Categories (fixed, translated, many per recipe) + free tags + oven facets + **FTS5 `trigram`** |
+| Auth (browser) | OIDC Authorization Code + **PKCE (S256)** + client secret against Authentik via `github.com/coreos/go-oidc/v3` + `golang.org/x/oauth2`. Opaque server-side sessions in SQLite |
+| Auth (assistant) | Per-user **bearer API tokens** (random, shown once, SHA-256 at rest), scoped |
+| CSRF | `http.CrossOriginProtection` + `SameSite=Lax` cookie + POST-only mutations |
+| Images | Browser resizes before upload; server accepts **JPEG, PNG, WebP only** (HEIC rejected with a friendly message), re-encodes to JPEG `full` + `thumb`, strips metadata. Files under `/data/media`, served by an authz-checking handler |
+| Image libs | stdlib `image/jpeg`, `image/png`; `golang.org/x/image/webp`, `golang.org/x/image/draw` (CatmullRom); `github.com/rwcarlsen/goexif/exif` (orientation only) |
+| i18n | `github.com/nicksnyder/go-i18n/v2`, embedded TOML `en`, `he`. RTL via `<html dir>` + CSS logical properties |
+| Logging | `log/slog`, JSON to stdout |
 | Config | Environment variables only (§12) |
-| LLM hook | `categorize.Categorizer` interface + in-process domain events. Default implementation is a no-op |
-| Build tooling | Taskfile v3 (§16), multi-stage Dockerfile → `gcr.io/distroless/static-debian12:nonroot` |
+| LLM hook | `categorize.Categorizer` interface + durable "not yet categorized" marker + in-process events. v1 = no-op |
+| Build | Taskfile v3 (§18); multi-stage Dockerfile → `gcr.io/distroless/static-debian12:nonroot` |
 
-### Why server-rendered + htmx instead of an SPA
-- **One deployable, one language.** There is no JS toolchain, no npm supply chain, and no separate frontend container. That suits a household app on Cosmos.
-- **Auth is simpler and safer.** It is a pure cookie session and the backend is the OIDC client. No tokens in the browser, no CORS, no refresh-token handling in JS.
-- **Fast on low-end tablets.** The Galaxy Tab S6 Lite gets first paint from HTML with no hydration. Total JS is about 16 KB gzip (htmx) plus about 3 KB of app code.
-- **Enough interactivity.** htmx covers live search filtering, inline inbox accept/reject, and partial swaps. The editor needs dynamic rows (ingredients/steps/stages) and a small vanilla-JS module using `<template>` cloning handles that.
-- **Progressive enhancement.** Browsing, search, view, cook mode, inbox and settings work as plain links and forms without JS. The recipe editor needs JS for adding and reordering rows, which is acceptable for the listed browsers.
+### Why server-rendered + htmx
+- **One deployable, one language**: no JS toolchain or npm supply chain; suits a household app on Cosmos.
+- **Simpler, safer auth**: pure cookie session, backend is the OIDC client; no tokens in the browser, no CORS.
+- **Fast on the Galaxy Tab S6 Lite**: first paint from HTML, no hydration. JS budget: htmx (~16 KB gzip) + app modules ≤ 10 KB gzip.
+- **Enough interactivity**: htmx covers live search, favourites, visibility toggle, inbox actions, pagination. The editor, cook mode (timers, wake lock) and photo upload use vanilla JS.
+- **Progressive enhancement**: browsing, search, recipe view, inbox actions and settings work without JS. The editor and cook mode require JS (acceptable for the listed browsers).
 
 ## 2. Component diagram
 
@@ -42,236 +47,345 @@ flowchart LR
   subgraph Cosmos["Cosmos Server"]
     RP["Cosmos reverse proxy (TLS)"]
     subgraph C["Container: recipes"]
-      MW["Middleware: recover, request-id, slog, security headers, CrossOriginProtection, session/bearer auth, i18n"]
+      MW["Middleware: recover, request-id, access log, host check, security headers, CrossOriginProtection, session/bearer auth, locale"]
       WEB["web handlers (HTML + htmx fragments)"]
       API["api handlers (/api/v1 JSON)"]
       MEDIA["media handler"]
-      SVC["domain services: recipes, inbox, labels, search, users, tokens"]
+      SVC["services: recipes, inbox, labels, search, users, tokens, authz"]
       OVEN["oven spec + validation"]
-      IMG["image pipeline"]
+      IMG["image pipeline (1 worker)"]
       EVT["event bus (in-process)"]
-      CAT["Categorizer (no-op; future LLM)"]
-      STORE["store (SQL, goose migrations)"]
+      CAT["Categorizer (no-op)"]
+      STORE["store (SQL)"]
+      JOBS["background jobs: purge, sweeper, backup"]
     end
-    VOL[("/data volume: recipes.db (+wal), media/, backups/")]
+    VOL[("/data: recipes.db, media/, backups/, tmp/")]
   end
-  AK["Authentik (OIDC provider)"]
+  AK["Authentik (OIDC)"]
   NET["Internet (image URLs)"]
 
   B -->|HTTPS| RP --> MW
-  AI -->|"HTTPS, Bearer token"| RP
+  AI -->|"HTTPS, Bearer"| RP
   MW --> WEB & API & MEDIA
-  WEB --> SVC
-  API --> SVC
-  MEDIA --> SVC
+  WEB & API & MEDIA --> SVC
   SVC --> OVEN & IMG & STORE & EVT
   EVT --> CAT
-  IMG -->|"fetch image_url (SSRF-guarded)"| NET
+  IMG -->|"fetch image URL (SSRF-guarded)"| NET
   STORE --> VOL
   IMG --> VOL
-  WEB <-->|"OIDC code + PKCE (back channel token exchange)"| AK
-  B -.->|redirect login/logout| AK
+  JOBS --> VOL
+  WEB <-->|"code exchange, discovery, JWKS"| AK
+  B -.->|"login / logout redirects"| AK
 ```
 
-Layering rule: handlers → services → store. Handlers never run SQL. Services own transactions, authz checks, validation, FTS reindex, and event publishing.
+Layering rule: handlers → services → store. Handlers never run SQL and never decide authorization themselves;
+they call service methods (which enforce authz) and `authz` predicates (to decide what to *show*).
+Services own transactions, validation, FTS maintenance and event publishing.
 
 ## 3. Repository layout
 
 ```
-/cmd/recipes/main.go          # subcommands: serve (default), migrate, reindex, backup, user, version
+/cmd/recipes/main.go          # subcommands (§17)
 /internal/config/             # env parsing + validation (fail fast)
-/internal/db/                 # Open(reader, writer), pragmas, goose runner
-/internal/db/migrations/      # 0001_init.sql, ... (embedded)
-/internal/store/              # repositories: users, sessions, recipes, ingredients, steps, stages, labels, images, tokens, fts
-/internal/domain/             # plain structs + enums (Recipe, Ingredient, Step, OvenStage, Visibility, Status, ...)
-/internal/oven/               # spec.go (mode table), validate.go, derive.go (+ tests)
-/internal/service/            # recipes.go, inbox.go, search.go, labels.go, users.go, tokens.go, authz.go
-/internal/auth/               # oidc.go (login/callback/logout), session.go, bearer.go, middleware.go
-/internal/images/             # decode/orient/resize/encode, fetch (SSRF guard), storage paths
+/internal/db/                 # Open(reader, writer), pragmas, goose runner, version guard
+/internal/db/migrations/      # 0001_initial_schema.sql, 0002_seed_categories.sql (embedded)
+/internal/store/              # repositories (one file per aggregate)
+/internal/domain/             # plain structs + enums
+/internal/oven/               # spec.go (table), validate.go, derive.go
+/internal/service/            # recipes, inbox, search, labels, users, tokens, images
+/internal/authz/              # pure predicates (§7)
+/internal/auth/               # oidc.go, session.go, bearer.go, middleware.go
+/internal/images/             # decode/orient/resize/encode, fetch (SSRF guard), storage paths, sweeper
 /internal/events/             # Bus, event types
-/internal/categorize/         # Categorizer interface, Noop, Suggestion types
-/internal/i18n/               # bundle loader, Localizer per request, template funcs
-/internal/web/                # HTML handlers, view models, form parsing, flash messages
+/internal/categorize/         # Categorizer interface, Noop
+/internal/i18n/               # bundle, per-request Localizer, template funcs, i18ncheck tool
+/internal/web/                # HTML handlers, view models, form parsing, flash
 /internal/api/                # JSON handlers, problem+json, DTOs
-/internal/httpx/              # middleware (security headers, request id, logging, recover, rate limit)
-/web/templates/               # layout.html, partials/*.html, pages/*.html
-/web/static/                  # css/app.css, js/app.js, vendor/htmx.min.js, icons/, manifest.webmanifest
-/web/embed.go                 # //go:embed templates static
-/locales/en.toml, he.toml     # embedded via /locales/embed.go
-/deploy/                      # docker-compose.yml (dev), compose.cosmos.yml / cosmos servapp json (see 50-deployment)
+/internal/httpx/              # generic middleware
+/web/templates/               # layout.html, pages/*.html, partials/*.html
+/web/static/                  # css/, js/, vendor/htmx.min.js, icons/, manifest.webmanifest, sw.js
+/locales/en.toml, he.toml
+/deploy/dev/                  # docker-compose.yml, .env.example, authentik blueprint, mock-oidc config (50 §4)
+/deploy/cosmos/               # cosmos-compose.json, README.md (50 §5)
+/test/                        # end-to-end tests (60 §6)
 /docs/specs/
-Dockerfile, Taskfile.yml, .golangci.yml, go.mod
+Dockerfile, .dockerignore, Taskfile.yml, .golangci.yml, go.mod
 ```
 
-Static assets are served at `/static/{version}/...`, where `{version}` is the build's git short SHA. Response header `Cache-Control: public, max-age=31536000, immutable`.
+Static assets are served at `/static/{version}/...` (`{version}` = git short SHA, `dev` in development) with
+`Cache-Control: public, max-age=31536000, immutable` (`no-cache` when `APP_ENV=development`).
+`/manifest.webmanifest` and `/sw.js` are served at fixed root paths with `Cache-Control: no-cache`.
 
-## 4. HTTP server and middleware chain
+## 4. HTTP server and middleware
 
-Order (outermost first): `Recover` → `RequestID` (`X-Request-Id`, generate if missing) → `AccessLog` (slog) → `SecurityHeaders` → `CrossOriginProtection` (only for non-`/api/` paths) → `Auth` (session for HTML, bearer for `/api/v1`) → `Locale` → handler.
+Order (outermost first): `Recover` → `RequestID` (`X-Request-Id`; generate a ULID if missing or not `[A-Za-z0-9-]{1,64}`)
+→ `AccessLog` → `HostCheck` → `SecurityHeaders` → `CrossOriginProtection` (non-`/api/` paths) → `Auth`
+(session for HTML; bearer for `/api/v1`; both for `/media`) → `Locale` → mux.
 
-Server timeouts: `ReadHeaderTimeout 10s`, `ReadTimeout 60s` (uploads), `WriteTimeout 60s`, `IdleTimeout 120s`. Graceful shutdown on SIGTERM with a 20 s drain. The listener sits behind the Cosmos proxy. `APP_TRUST_PROXY=true` makes the app read `X-Forwarded-For` for the client IP in logs and rate limits. Scheme and host always come from `APP_BASE_URL`, never from request headers.
+- **HostCheck**: requests whose `Host` differs from the host of `APP_BASE_URL` get 400, except `/healthz` and `/readyz`.
+- **Client IP**: the TCP peer, unless the peer is inside `APP_TRUSTED_PROXIES`; then the right-most `X-Forwarded-For`
+  entry that is not itself in `APP_TRUSTED_PROXIES`. Used for logs and rate limiting only.
+- Scheme, host and every absolute URL come from `APP_BASE_URL`, never from `X-Forwarded-*` or `Host`.
+- Timeouts: `ReadHeaderTimeout 10s`, `ReadTimeout 120s`, `WriteTimeout 120s`, `IdleTimeout 120s`.
+- Shutdown: on SIGTERM stop accepting, drain for at most **8 s**, run `PRAGMA wal_checkpoint(TRUNCATE)`, close the DB,
+  exit 0. (Docker's default stop grace period is 10 s.)
+- Startup must not depend on Authentik being reachable: OIDC discovery is loaded lazily and retried with backoff;
+  `/auth/login` returns a friendly 503 page ("Sign-in is temporarily unavailable") until discovery succeeds.
 
 ## 5. Authentication: browser (Authentik OIDC)
 
-### 5.1 Authentik setup (documented in 50-deployment)
-- Create an OAuth2/OpenID Provider, client type **Confidential**, redirect URI `${APP_BASE_URL}/auth/callback`, signing key RS256, scopes `openid email profile` (+ `groups` via the default "authentik default OAuth Mapping: OpenID 'profile'", which includes `groups`). Optionally limit access with an Authentik policy binding.
-- The app uses **PKCE S256 together with the client secret** (defence in depth).
+### 5.1 Provider setup
+Operational steps are in `50 §6`. The app needs: confidential client, redirect URI `${APP_BASE_URL}/auth/callback`,
+RS256 signing key, scopes `openid email profile` (Authentik's default `profile` mapping includes `groups`),
+post-logout redirect `${APP_BASE_URL}/auth/logged-out`. The app sends PKCE S256 **and** the client secret.
 
 ### 5.2 Login flow
-1. `GET /auth/login?return_to=/recipes/12` (`return_to` must be a relative path starting with `/` and not `//`; otherwise use `/`).
-2. Server generates `state` (32 random bytes, base64url), `nonce` (32 B), and `verifier = oauth2.GenerateVerifier()`. It inserts a row into `oidc_login_states(state, verifier, nonce, return_to, expires_at = now+10m)`.
-3. 302 to `oauth2Config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier), oidc.Nonce(nonce))`.
-4. `GET /auth/callback?code&state`: the server looks up the state and **deletes it** (single use). If it is missing or expired → 400 page "Login expired, try again" with a link. If the IdP sent an `error` parameter, render it.
-5. `oauth2Config.Exchange(ctx, code, oauth2.VerifierOption(verifier))`, then `verifier.Verify(rawIDToken)` (go-oidc checks iss/aud/exp/signature), then check that `idToken.Nonce == nonce`.
-6. **Claims mapping**:
+1. Unauthenticated page requests go to `GET /signin?return_to=…` (`40 §1`), a friendly app page with one big
+   "Sign in" button and a language switch (story A1-AC3, I1-AC1). The button links to `/auth/login?return_to=…`.
+2. `GET /auth/login`: validate `return_to` (`40 §1`). Generate `state` (32 random bytes, base64url), `nonce` (32 B),
+   `verifier = oauth2.GenerateVerifier()`. Insert into `oidc_login_states` with `expires_at = now + 10 min`.
+   302 to `AuthCodeURL(state, oauth2.S256ChallengeOption(verifier), oidc.Nonce(nonce))`.
+3. `GET /auth/callback`: if the IdP sent `error` → the "not allowed" page (403) for `access_denied`, otherwise the
+   "sign-in failed, try again" page (400). Look up and **delete** the state row (single use). Missing/expired →
+   400 "Sign-in took too long — try again" with a button.
+4. `Exchange(ctx, code, oauth2.VerifierOption(verifier))`, verify the ID token (go-oidc checks iss/aud/exp/signature),
+   check `nonce`.
+5. Claims mapping:
 
    | Claim | Use |
    |---|---|
-   | `iss` + `sub` | Immutable identity key (`users.oidc_issuer`, `users.oidc_subject`), unique together |
-   | `email` | `users.email` (refreshed every login, informational) |
-   | `name`, else `preferred_username`, else `email` | `users.display_name` (refreshed every login) |
-   | `groups` (string array) | If `OIDC_ALLOWED_GROUPS` is set and there is no overlap → 403 page "Not authorized". `is_admin = OIDC_ADMIN_GROUP ∈ groups` (refreshed every login) |
-   | `locale` (optional) | Initial `users.ui_language` if it is `he*`/`en*` and the user has not chosen one |
+   | `iss` + `sub` | Identity key `(users.oidc_issuer, users.oidc_subject)` |
+   | `email` | `users.email` (refreshed each login, informational, not unique) |
+   | `name`, else `preferred_username`, else `email` | `users.display_name` (refreshed each login) |
+   | `OIDC_GROUPS_CLAIM` (string array) | If `OIDC_ALLOWED_GROUPS` is set and there is no overlap → **"not allowed" page, 403** ("You can't get in yet. Ask Lior to add you."). `is_admin = OIDC_ADMIN_GROUP ∈ groups` (refreshed each login) |
+   | `locale` (optional) | Initial `users.ui_language` if it starts with `he`/`en` and the user has not chosen one |
 
-7. **Provisioning**: upsert the user on `(oidc_issuer, oidc_subject)`. A first login creates the user (no invite step), with `ui_language` from the claim, else `Accept-Language`, else `APP_DEFAULT_LANG`. Set `last_login_at`.
-8. Create a session (§5.3), set the cookie, 302 to `return_to`.
+   The app's group check is the **primary** access gate, so denied users see the friendly page. An Authentik
+   policy binding is optional defence in depth (`50 §6.5`); when used, Authentik shows its own denial page instead.
+6. Provisioning: upsert on `(oidc_issuer, oidc_subject)`; first login creates the user with a new UUID.
+   `ui_language` from the claim, else the `lang` cookie, else `Accept-Language`, else NULL. Set `last_login_at`.
+7. Create a session (§5.3), set the cookie, `303 return_to`.
 
 ### 5.3 Sessions
-- The cookie `__Host-nwr_session` (falls back to `nwr_session` with no `__Host-` prefix when `APP_BASE_URL` is `http://`, i.e. dev) holds 32 random bytes, base64url. Flags: `HttpOnly; Secure (if https); SameSite=Lax; Path=/`.
-- DB `sessions.id_hash = SHA-256(token)`. The row also stores `user_id`, `id_token` (for the logout hint), `created_at`, `last_seen_at`, `expires_at`, `user_agent`, `ip`.
-- Lifetime: sliding idle timeout `SESSION_IDLE_TTL` (default 30 days, good for a household on phones). `last_seen_at`/`expires_at` are updated at most once per 10 min per session. Absolute max is `SESSION_MAX_TTL` (default 90 days). Expired rows are purged hourly by a background goroutine (it also purges expired `oidc_login_states`).
-- Sessions are **not** tied to the IdP session after login. Disabling a user in Authentik blocks new logins. Existing sessions keep working until expiry; an admin can cut them with `recipes user revoke-sessions` (CLI).
+- Cookie `__Host-nwr_session` (dev over `http://`: `nwr_session`), value 32 random bytes base64url.
+  Flags `HttpOnly; Secure (https only); SameSite=Lax; Path=/`; `Max-Age` = remaining absolute lifetime.
+- Stored as `sessions.id_hash = hex(SHA-256(token))`; the raw token is never stored. No signing key is involved,
+  so there is no session-secret env var and server restarts never log anyone out.
+- Lifetime: idle timeout `SESSION_IDLE_TTL` (default 30 days), absolute `SESSION_MAX_TTL` (default 365 days).
+  On each authenticated request, if `last_seen_at` is older than 10 min, set `last_seen_at = now` and
+  `expires_at = min(now + idle, created_at + max)`.
+- Hourly job deletes expired sessions and login states.
+- Sessions are independent of the IdP session. Disabling a user in Authentik blocks new logins only;
+  `recipes user revoke-sessions <user>` ends existing ones.
 
 ### 5.4 Logout
-`POST /auth/logout` (a form button, CSRF-protected): delete the session row, clear the cookie, then 302 to the provider's `end_session_endpoint` (from discovery) with `id_token_hint` and `post_logout_redirect_uri=${APP_BASE_URL}/auth/logged-out`. If discovery has no end-session endpoint, go to `/auth/logged-out` directly. `/auth/logged-out` is public and shows "Signed out" with a "Sign in" button.
+`POST /auth/logout`: delete the session row, clear the cookie, 302 to the discovered `end_session_endpoint` with
+`id_token_hint` and `post_logout_redirect_uri=${APP_BASE_URL}/auth/logged-out`; without an endpoint, 302 to
+`/auth/logged-out` directly.
 
-### 5.5 Unauthenticated access
-HTML routes other than `/auth/*`, `/healthz`, `/readyz`, `/static/*` and `/auth/logged-out` 302 to `/auth/login?return_to=<current path+query>`. For htmx requests (`HX-Request: true`) the response is 401 with an `HX-Redirect: /auth/login?...` header instead.
-
-### 5.6 Development without Authentik
-`deploy/docker-compose.yml` includes **`ghcr.io/navikt/mock-oauth2-server`** as a dev-only OIDC provider. The real code path is used, so there is **no auth-bypass flag in the binary**.
+### 5.5 Development
+`deploy/dev` runs a real Authentik (default) or `ghcr.io/navikt/mock-oauth2-server` (profile `mock`) (`50 §4`).
+The real code path is always used: **the binary has no auth-bypass flag or dev-login route.**
 
 ## 6. Authentication: AI assistant (API tokens)
 
-- The user creates tokens at `/settings/tokens`: name (e.g. "Home assistant"), scopes (checkboxes), optional expiry (never / 30 / 90 / 365 days).
-- Token format: `nwr_` + 32 random bytes in base62 (about 43 chars). It is shown **once**. Stored: `token_hash = SHA-256(full token)` (hex, unique index), `token_prefix` = first 8 characters after `nwr_` (displayed), scopes, `last_used_at`, `expires_at`, `revoked_at`.
-- Request: `Authorization: Bearer nwr_...`. Lookup is by hash (a constant-time comparison is implicit in the indexed hash lookup). Reject when revoked, expired, or the owning user is missing. `last_used_at` is updated at most once per minute.
-- Scopes: `inbox:write` (create/list/withdraw own inbox items) and `recipes:read` (read recipes visible to the user, for de-duplication). New tokens default to both.
-- Tokens act **as their user** with the same authz rules. A token can never accept inbox items, share, or delete active recipes; those actions are browser-only by design.
-- Rate limit: in-memory token bucket per token, 60 requests/min with burst 20 → 429 with `Retry-After`.
-- Up to 10 active tokens per user.
+- Created at `/settings/tokens`: name, scopes, expiry (never / 30 / 90 / 365 days). Max 10 active tokens per user.
+- Format `nwr_` + 32 random bytes base62 (~43 chars), shown once. Stored: `token_hash = hex(SHA-256(full token))`,
+  `token_prefix` = first 8 chars after `nwr_`, scopes, `expires_at`, `revoked_at`, `last_used_at` (updated ≤ 1/min).
+- `Authorization: Bearer nwr_…`; lookup by hash. Reject (401) when unknown, revoked, expired, or the user is gone.
+- Scopes: `inbox:write` (submit, list, withdraw own inbox items), `recipes:read` (read recipes visible to the user,
+  their images, categories). New tokens default to both.
+- Tokens act as their user with the same authz, but can never accept/reject, edit, share or delete (browser-only).
+- Rate limit: in-memory token bucket per token, `API_RATE_LIMIT_PER_MIN` (default 60) with burst 20 → 429 + `Retry-After`.
 
 ## 7. Authorization rules
 
-Actor = the session user (or the token's user for the API). Admins are users with `is_admin` from the `OIDC_ADMIN_GROUP` claim.
+Actor = session user or token user. Predicates live in `internal/authz` as pure functions with table-driven tests.
 
-| Resource state | View | Edit | Delete | Share/Unshare | Accept/Reject | Copy to mine |
-|---|---|---|---|---|---|---|
-| `status=inbox` (always private) | owner | owner | owner (= Reject) | — (not allowed until accepted) | owner | — |
-| `status=active, visibility=private` | owner | owner | owner | owner | — | owner |
-| `status=active, visibility=shared` | **all users** | owner, admin | owner, admin | owner (unshare); admin (unshare) | — | all users |
+| Predicate | `status=inbox` | `active` + `private` | `active` + `shared` |
+|---|---|---|---|
+| `CanView` | owner | owner | **every user** |
+| `CanEdit` | owner | owner | **every user** |
+| `CanDelete` | owner (= reject) | owner | **every user** |
+| `CanChangeVisibility` | — (accept first) | owner (share) | owner (unshare); nobody if `owner_id IS NULL` |
+| `CanAcceptReject` | owner | — | — |
+| `CanCopy` | — | owner | every user |
+| `CanFavourite`, `CanLogCook` | — | owner | every user |
+| Delete a cook-log entry | — | its author | its author |
 
-- If a user cannot view a resource, every route for it returns **404**, not 403, so existence does not leak. If they can view but not modify it, they get 403.
-- Images inherit the authz of their recipe (the media handler checks view permission).
-- Label autocomplete only shows labels used on recipes the user can view.
-- Admin powers are limited to moderating shared recipes. Admins **cannot** see other users' private recipes or inboxes.
-- Authz lives in `service/authz.go` as pure functions, e.g. `CanView(user, recipe) bool`, with table-driven tests.
+- This is the owner's decision 1.1 ("full control of shared recipes is ceded to the family"). Only visibility is
+  reserved to the owner, so nobody can make a recipe disappear from the family by turning it into someone else's
+  private recipe; deleting it is possible and is guarded by the strong confirmation (`70 §4.6`).
+- **Admins** (`is_admin`) manage the category list (`/admin/categories`). They have no extra power over recipes and
+  cannot see other users' private recipes or inboxes.
+- Not viewable → 404; viewable but action not allowed → 403.
+- Images inherit the recipe's `CanView`. Tag suggestions only include tags used on recipes the actor can view.
+- **View models**: every page that shows an action button receives the matching boolean computed from these
+  predicates (`CanEdit`, `CanDelete`, `CanChangeVisibility`, `CanCopy`, `IsFavourite`, …). Templates never
+  reimplement the rules. The required flags per page are listed in `70 §4`.
 
 ## 8. Security controls
 
-- **CSRF**: `http.CrossOriginProtection` wraps all non-API routes. It rejects unsafe-method requests whose `Sec-Fetch-Site` is cross-site or whose `Origin` does not match the host. Add `APP_BASE_URL`'s origin as a trusted origin. All state changes are POST (HTML forms cannot send DELETE). Session cookie is `SameSite=Lax`. The bearer API skips this because it is not cookie-authenticated, and the API **never** accepts the session cookie.
-- **Security headers** (all HTML responses):
-  - `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self' <OIDC issuer origin>`
-  - No inline scripts or styles anywhere. Configure htmx with `<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false}'>`. Indicator CSS lives in `app.css`. Server data for JS goes in `<script type="application/json">` blocks.
-  - `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`, `Permissions-Policy: camera=(self), geolocation=(), microphone=()`, `Cross-Origin-Opener-Policy: same-origin`, and `Strict-Transport-Security: max-age=31536000` when https.
-- **Output encoding**: `html/template` contextual escaping only. Recipe text is plain text rendered with `white-space: pre-line`. No Markdown or HTML input in v1, so there is no sanitizer.
-- **Upload limits**: `http.MaxBytesReader`. Browser image upload: `MAX_IMAGE_MB` (default 15) per file, at most 5 files per request, so a request is capped at 5×MAX_IMAGE_MB + 1 MB. API inbox JSON body cap is `API_MAX_BODY_MB` (default 40, to fit base64 images). Image pixel cap is 40 MP, checked with `image.DecodeConfig` before a full decode (decompression-bomb guard). Allowed formats are detected by magic bytes (`http.DetectContentType`), not file extension: JPEG, PNG, WebP. Anything else (HEIC, GIF, SVG) → 415 with a localized message.
-- **SSRF guard** for API `image_url`s: only `https` (and `http` if `IMAGE_FETCH_ALLOW_HTTP=true`). DNS is resolved and **every resolved IP must be public**; loopback, RFC1918, link-local, CGNAT 100.64/10, ULA fc00::/7, multicast and unspecified are rejected. Enforcement uses a custom `net.Dialer.Control` so DNS rebinding cannot bypass it. Max 3 redirects, each re-checked. Timeout `IMAGE_FETCH_TIMEOUT` (default 15 s). Body cap is MAX_IMAGE_MB. `User-Agent: ninja-recipes/<version>`.
-- **Input limits** (server-side, also as HTML `maxlength`): title ≤ 200, description ≤ 2000, ingredient name ≤ 200, step text ≤ 4000, notes ≤ 8000, ≤ 100 ingredients, ≤ 100 steps, ≤ 10 stages, ≤ 20 labels per recipe, label ≤ 40 chars.
-- **Secrets**: `OIDC_CLIENT_SECRET` can be supplied as `OIDC_CLIENT_SECRET_FILE` (a Docker secret). Secrets are never logged; the config dump redacts them.
-- The container runs as non-root UID 65532 with a read-only root filesystem; only `/data` is writable.
+- **CSRF**: `http.CrossOriginProtection` on all non-API routes, with `APP_BASE_URL`'s origin trusted. POST-only
+  mutations; `SameSite=Lax`. The API never accepts the session cookie, so it is exempt.
+- **Security headers** on HTML responses:
+  - `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self' <OIDC issuer origin>`
+  - **No `'unsafe-inline'`, no external hosts.** Templates contain no inline `<script>` code, no `on*=` attributes
+    and no `style=` attributes. JS behaviour is attached by event delegation on `data-action` attributes (`70 §2`).
+    htmx config: `<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false}'>`.
+    Server data for JS goes in `<script type="application/json">` blocks.
+  - `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`,
+    `Permissions-Policy: camera=(self), geolocation=(), microphone=(), screen-wake-lock=(self)`,
+    `Cross-Origin-Opener-Policy: same-origin`, `Strict-Transport-Security: max-age=31536000` when https.
+- **Output encoding**: `html/template` only. Recipe text is plain text rendered with `white-space: pre-line`;
+  no Markdown/HTML input in v1.
+- **Uploads**: `http.MaxBytesReader` on every body. Browser image upload: one file per request,
+  `MAX_IMAGE_MB` (default 15). Form posts without files: 1 MB. API JSON body: `API_MAX_BODY_MB` (default 40).
+  Type by magic bytes (`http.DetectContentType` plus WebP `RIFF….WEBP` check): JPEG, PNG, WebP. HEIC/HEIF
+  (`ftypheic`, `ftypheix`, `ftypmif1`, `ftyphevc`), GIF, SVG and everything else → 415 with a localized message
+  ("This photo format isn't supported. On Samsung: Camera settings → Advanced picture options → turn off
+  High efficiency pictures."). Pixel cap `IMAGE_MAX_PIXELS` (default 50 MP) checked via `image.DecodeConfig` first.
+- **SSRF guard** for API image URLs: `https` only (plus `http` if `IMAGE_FETCH_ALLOW_HTTP=true`). Every resolved IP must
+  be public: reject loopback, RFC 1918, link-local, CGNAT 100.64/10, ULA fc00::/7, multicast, unspecified,
+  IPv4-mapped/NAT64 forms of those. Enforced in `net.Dialer.Control` (defeats DNS rebinding). ≤ 3 redirects, each
+  re-checked. Timeout `IMAGE_FETCH_TIMEOUT`. Body cap `MAX_IMAGE_MB`. `User-Agent: ninja-recipes/<version>`.
+- **Input limits** (server-side; also HTML `maxlength`): title ≤ 200, description ≤ 2000, notes ≤ 8000,
+  ingredient line ≤ 300, step ≤ 4000, ≤ 100 ingredients, ≤ 100 steps, ≤ 10 stages, stage notes ≤ 500,
+  pellet note ≤ 60, ≤ 5 categories, ≤ 20 tags, tag ≤ 40 chars, cook-log note ≤ 2000, source URL ≤ 2000,
+  `MAX_IMAGES_PER_RECIPE` (default 10; counts recipe photos only, not cook-log photos).
+- **Secrets**: `OIDC_CLIENT_SECRET` or `OIDC_CLIENT_SECRET_FILE` (exactly one). Never logged; the startup config
+  dump redacts it. Tokens, cookies, `Authorization` headers and OAuth `code`/`state` query values are never logged.
+- **Container**: UID 65532, read-only root filesystem, only `/data` writable. `TMPDIR=/data/tmp` (set in the
+  Dockerfile) so multipart spill files and SQLite temp files work; `/data/tmp` is emptied at startup.
+- **Caching of private media**: `Cache-Control: private, max-age=31536000, immutable`. Accepted consequence: after a
+  recipe is unshared or deleted, its photos may remain in other family members' browser caches.
 
 ## 9. Images
 
-- **Storage**: `${APP_DATA_DIR}/media/{key[0:2]}/{key}/{variant}.jpg`, where `key` = 16 random bytes in hex (unguessable, though authz is still enforced). Variants:
-  - `full`: longest edge ≤ 1600 px, JPEG quality 82
-  - `thumb`: longest edge ≤ 480 px, JPEG quality 78 (cards/lists)
-  
-  The original upload is **not kept**, which saves space and removes metadata.
-- **Pipeline** (`images.Process(r io.Reader) (Processed, error)`): sniff type → `DecodeConfig` pixel cap → read the EXIF Orientation (JPEG only, via goexif; ignore errors) → decode → apply the orientation (rotate/flip in Go) → resize with `draw.CatmullRom` (never upscale) → flatten alpha onto white → encode JPEG. Re-encoding **drops all EXIF/GPS** metadata. Write to a temp file in the same directory, then `os.Rename` (atomic).
-- **DB**: `recipe_images(recipe_id, storage_key, position, width, height, bytes, caption, source_url, created_at)`. The first position is the cover image. Max `MAX_IMAGES_PER_RECIPE` (default 10).
-- **Serving**: `GET /media/{key}/{variant}` → look up the image by key → check `CanView` on its recipe → `http.ServeContent` with `ETag` = key+variant, `Cache-Control: private, max-age=31536000, immutable` (content under a key never changes).
-- **Deletion**: files are deleted **after** the DB transaction commits. A failure is logged and the orphan is cleaned up by a nightly sweeper (any media directory with no DB row that is older than 1 h). This keeps "hard delete incl. images" reliable.
-- **Client side**: `<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple>`. The camera works on Galaxy phones. Samsung's default camera output is JPEG. HEIC is rejected with a clear message (see open questions).
+- **Client side** (`70 §6.3`): the browser decodes the picked photo, applies orientation, scales it so the longest edge is
+  ≤ 2048 px and uploads JPEG quality 0.85 (typically 300–800 KB instead of 5–12 MB over weak garden Wi-Fi). If the
+  browser cannot decode the file (e.g. HEIC), it shows the HEIC message without uploading. The original file is
+  uploaded unchanged only if canvas encoding fails for another reason.
+- **Server pipeline** `images.Process(r io.Reader) (Processed, error)`: sniff type → `DecodeConfig` pixel cap → read EXIF
+  Orientation (JPEG only; errors ignored) → decode → apply orientation → resize with `draw.CatmullRom` (never upscale)
+  → flatten alpha onto white → encode JPEG. Variants:
+  - `full`: longest edge ≤ 1600 px, quality 82
+  - `thumb`: longest edge ≤ 480 px, quality 78 (not cropped; cards crop with CSS `object-fit: cover`)
+- Re-encoding drops all EXIF/GPS. The original is not kept.
+- **Concurrency**: processing runs under a global semaphore of `IMAGE_WORKERS` (default 1), so peak memory stays
+  bounded (a 50 MP decode is ~200 MB RGBA; the container limit is 384 MiB, `50 §5.8`). Waiting requests block up to
+  60 s, then 503 "Busy, try again".
+- **Storage**: `${APP_DATA_DIR}/media/{key[0:2]}/{key}/{full|thumb}.jpg`, `key` = 16 random bytes hex. Write to
+  `${APP_DATA_DIR}/tmp`, fsync, `os.Rename` into place (same filesystem), then insert the DB row.
+- **Serving**: `GET /media/{key}/{variant}` → look up by key → `CanView` on its recipe → `http.ServeContent` with
+  `ETag: "{key}-{variant}"`. Missing file with an existing row → serve the embedded placeholder image (never 500).
+- **Deletion**: files are removed **after** the DB transaction commits. Failures are logged. A nightly sweeper deletes
+  media directories with no DB row that are older than 1 h, and tmp files older than 1 h.
 
 ## 10. Internationalization (EN/HE, RTL)
 
-- Catalogs: `locales/en.toml`, `locales/he.toml` (go-i18n v2), loaded from `embed.FS` at startup. CI runs `task i18n:check`, which fails if any key is missing in either file. Message IDs are dotted (`recipe.edit.title`, `oven.mode.max_roast`). Plurals use go-i18n's CLDR forms (Hebrew has one/two/many/other).
-- **Language resolution** (per request): (1) `users.ui_language` if set, (2) `lang` cookie (anonymous pages), (3) `Accept-Language` matched with `golang.org/x/text/language.Matcher` against [en, he], (4) `APP_DEFAULT_LANG`. The `POST /settings/language` switcher updates both the user and the cookie.
-- Templates get a localizer via the `T` func: `{{T "recipe.save"}}`, `{{T "recipe.servings" .Count}}`. Durations and temperatures go through helpers `fmtDuration`, `fmtTemp` (`°C`), `fmtQty` (decimal comma/point per locale, fractions like ½ for 0.5/0.25/0.75). Dates use `golang.org/x/text` or simple per-locale layouts.
-- **RTL**: `<html lang="he" dir="rtl">`. CSS uses **logical properties only** (`margin-inline-start`, `padding-inline`, `inset-inline-end`, `text-align: start`), with flex/grid and no physical left/right. Directional icons (back/next arrows) get `[dir=rtl] .icon-dir { transform: scaleX(-1) }`. Numbers, temperatures and times are wrapped in `<bdi>` / `dir="ltr"` spans so "370 °C" and "1:30" are not reordered.
-- **Recipe content language** is separate from UI language. `recipes.language` (`en`|`he`|`und`) sets `lang`/`dir` on the recipe content container. For `und` use `dir="auto"`. User-entered text fields always carry `dir="auto"`, so a Hebrew recipe shows correctly in the English UI and vice versa.
-- Fonts: system font stack (Galaxy devices and Windows/Linux have Hebrew-capable fonts), so no webfont download.
+- Catalogs `locales/en.toml`, `locales/he.toml` (go-i18n v2), embedded. Message IDs are dotted (`recipe.edit.title`).
+  Hebrew plurals use CLDR one/two/many/other.
+- **No user-visible string literal in templates or Go handlers** except via `T`: this includes flash messages,
+  confirmation-dialog texts, placeholders, `aria-label`s and error pages. `task i18n:check` fails if a key is missing in
+  either catalog or referenced but undefined; code review rejects literals.
+- Language resolution per request: (1) `users.ui_language`, (2) `lang` cookie, (3) `Accept-Language` via
+  `golang.org/x/text/language.Matcher` over [en, he], (4) `APP_DEFAULT_LANG`. `POST /settings/language` updates both.
+- Template helpers: `T`, `fmtDuration` (`m:ss` < 1 h, `h:mm` ≥ 1 h, plus words "1 h 30 min" variant), `fmtTemp` (`°C`),
+  `fmtQty` (fractions ½ ¼ ¾ ⅓ ⅔, decimal comma/point per locale), `fmtDate`, `fmtAgo` ("3 weeks ago" / "לפני 3 שבועות").
+  Times shown in `TZ`.
+- **RTL**: `<html lang="he" dir="rtl">`. CSS logical properties only. Directional icons flip with
+  `[dir=rtl] .icon-dir { transform: scaleX(-1) }`. Numbers, temperatures and times are wrapped in `<bdi>`.
+- **Recipe content language** is independent of the UI language. `recipes.language` sets `lang`/`dir` on the recipe
+  container; `und` uses `dir="auto"`. The editor pre-selects `he` when the title contains Hebrew letters, else `und`.
+  Every user-entered text element carries `dir="auto"`.
+- Category names come from `labels.name` / `labels.name_he`; oven labels from `25 §3`.
+- Fonts: system stack, no webfonts.
 
-## 11. Search design
+## 11. Search
 
-**Taxonomy (decision): fixed categories + free labels.**
-- **Categories** are a fixed, seeded, translated list (one per recipe, required) giving a dependable top-level browse: `pizza`, `bread_dough`, `beef`, `lamb`, `pork`, `poultry`, `fish_seafood`, `vegetables`, `sides`, `desserts`, `snacks_dried`, `other`. Fixed keys are needed for EN/HE translation, stable filter chips, and as a target the future LLM can pick from reliably. Free-form text cannot be translated.
-- **Labels** are free, user-created tags (lowercase-normalized, any language), many per recipe, e.g. `vegetarian`, `kids`, `שבת`, `quick`, `brisket`. They cover everything the categories do not.
-- **Oven facets** come from the stages, so there is no tagging work: mode (any stage), uses woodfire, total oven time bucket.
-
-**Full-text**: FTS5 virtual table `recipe_fts` with **`tokenize='trigram remove_diacritics 1'`** over title, description, ingredients text, steps text, labels text and notes. Trigram was chosen because Hebrew attaches prefixes to words (ה/ו/ב/ל/מ/ש: "בפיצה" contains "פיצה"), and unicode61 word tokens would miss those. Trigram gives substring matching in both languages without a stemmer. Before indexing and querying, Go removes Hebrew niqqud/cantillation (U+0591–U+05C7) and applies NFKC + lower-case.
-- Query building (`service/search.go`): split the normalized query on whitespace. Terms of 3+ runes become FTS phrase tokens (`"` doubled for escaping) AND-ed in a `MATCH`. Terms of 1–2 runes become `AND (r.title LIKE ? ESCAPE '\' OR labels_text LIKE ?)` conditions.
-- Index maintenance: the service rebuilds a recipe's FTS row (`DELETE` + `INSERT` with `rowid = recipe.id`) **in the same transaction** as every recipe/ingredient/step/label change. Triggers are not used because the row aggregates several tables. `recipes reindex` rebuilds everything.
-- Ranking: `bm25(recipe_fts, 10, 3, 2, 1, 4, 1)` (title strongest, labels next) when `q` is present, otherwise `updated_at DESC`. Alternative sorts: `title`, `newest`, `oven_time`.
-- Filters (all combinable, AND across groups): `scope` = `all` (mine + shared, default) | `mine` | `shared`; `category` (repeatable → OR); `label` (repeatable → AND); `mode` (repeatable → OR, recipes having a stage with that mode); `woodfire=1`; `max_time` minutes (sum of stage durations). Inbox items never appear in search.
-- Scale assumption: under 10k recipes, so plain SQL with indexes is enough. Target p95 search under 50 ms on a Raspberry-Pi-class host.
+- **Taxonomy**: categories (seeded, translated, admin-managed, 0–5 per recipe), tags (free, 0–20 per recipe),
+  oven facets derived from stages (mode, smoked, total time). See `30 §5, §7`.
+- **Normalization** (identical for indexing and querying, `internal/service/search.go`): NFKC → lower-case →
+  remove Hebrew niqqud/cantillation (U+0591–U+05C7) → **map Hebrew final letters to regular forms**
+  (ך→כ, ם→מ, ן→נ, ף→פ, ץ→צ) → collapse whitespace. Without the final-letter mapping "עוף" would not match "עופות".
+- **FTS**: `recipe_fts` (`30 §4`) with `trigram remove_diacritics 1` (needs SQLite ≥ 3.45; bundled by modernc ≥ 1.29).
+  Columns: title, description, ingredients (`raw_text` joined), steps, labels (category names in both languages + tags),
+  notes (`recipes.notes` + all cook-log notes).
+- **Query building**: split the normalized query on whitespace. Terms of ≥ 3 runes become quoted FTS phrases
+  (`"` doubled) AND-ed in `MATCH`. Terms of 1–2 runes add `AND (normalized_title LIKE ? OR labels_text LIKE ?)` against
+  the FTS columns (`ESCAPE '\'`). Empty query → no FTS join.
+- **Maintenance** (same transaction as the change): recipe create/update/accept, cook-log add/delete, category rename
+  (re-index affected recipes), delete (remove row). `recipes reindex` rebuilds everything.
+- **Visibility filter** is always applied in SQL: `status='active' AND (visibility='shared' OR owner_id = :actor)`.
+- **Ranking**: `bm25(recipe_fts, 0, 10, 2, 3, 1, 4, 1)` (recipe_id, title, description, ingredients, steps, labels, notes)
+  when `q` is set; other sorts per `40 §2.3`. Pagination is keyset on the sort key + `id`.
+- **Filters**: `40 §2.3`. Inbox items never appear.
+- Scale: < 10k recipes; p95 search < 50 ms on a Raspberry-Pi-class host.
 
 ## 12. Configuration (environment variables)
 
-| Variable | Default | Required | Description |
-|---|---|---|---|
-| `APP_BASE_URL` | — | **yes** | Public URL, e.g. `https://recipes.example.com`. Used for redirects, cookie security, OIDC redirect URI, trusted origin |
-| `APP_LISTEN_ADDR` | `:8080` | no | HTTP listen address |
-| `APP_DATA_DIR` | `/data` | no | Holds `recipes.db`, `media/`, `backups/` |
-| `APP_DEFAULT_LANG` | `en` | no | `en` or `he` |
-| `APP_TRUST_PROXY` | `true` | no | Use `X-Forwarded-For` for the client IP |
-| `APP_ENV` | `production` | no | `production`/`development`. Dev enables template hot reload from disk (`APP_TEMPLATES_DIR`) and text logs |
-| `APP_TEMPLATES_DIR` | — | no | Dev only: load templates/static from disk instead of embed |
-| `OIDC_ISSUER_URL` | — | **yes** | e.g. `https://auth.example.com/application/o/recipes/` (Authentik per-app issuer, trailing slash as Authentik shows it) |
-| `OIDC_CLIENT_ID` | — | **yes** | |
-| `OIDC_CLIENT_SECRET` / `OIDC_CLIENT_SECRET_FILE` | — | **yes** (one of them) | |
-| `OIDC_SCOPES` | `openid email profile` | no | Space-separated |
-| `OIDC_ADMIN_GROUP` | `recipes-admins` | no | Group name that grants admin |
-| `OIDC_ALLOWED_GROUPS` | (empty = any authenticated user) | no | Comma-separated. If set, login requires membership |
-| `OIDC_GROUPS_CLAIM` | `groups` | no | |
-| `SESSION_IDLE_TTL` | `720h` | no | Go duration |
-| `SESSION_MAX_TTL` | `2160h` | no | |
-| `MAX_IMAGE_MB` | `15` | no | Per image |
-| `MAX_IMAGES_PER_RECIPE` | `10` | no | |
-| `API_MAX_BODY_MB` | `40` | no | |
-| `API_RATE_LIMIT_PER_MIN` | `60` | no | Per token |
-| `IMAGE_FETCH_TIMEOUT` | `15s` | no | |
-| `IMAGE_FETCH_ALLOW_HTTP` | `false` | no | |
-| `LOG_LEVEL` | `info` | no | `debug`/`info`/`warn`/`error` |
-| `LOG_FORMAT` | `json` | no | `json`/`text` |
-| `BACKUP_KEEP` | `7` | no | Number of `VACUUM INTO` snapshots kept by `recipes backup --rotate` |
-| `CATEGORIZER` | `noop` | no | Reserved for the future LLM (`noop` only in v1) |
+This table is the **only** definition of env vars. Compose files (`50`) use these names.
 
-Config is parsed once at startup into a typed struct. Invalid or missing required values → exit code 2 with a clear message.
+| Variable | Default | Req. | Description |
+|---|---|---|---|
+| `APP_BASE_URL` | — | **yes** | Public URL, no trailing slash, e.g. `https://recipes.example.com`. Redirects, absolute URLs, OIDC redirect URI, cookie `Secure`, trusted origin, Host check |
+| `APP_LISTEN_ADDR` | `:8080` | | |
+| `APP_DATA_DIR` | `/data` | | Holds `recipes.db`, `media/`, `backups/`, `tmp/` |
+| `APP_DEFAULT_LANG` | `en` | | `en` or `he` |
+| `APP_TRUSTED_PROXIES` | *(empty = none)* | | CIDR list whose `X-Forwarded-For` is honoured (§4) |
+| `APP_ENV` | `production` | | `development` enables template/static reload from `APP_TEMPLATES_DIR`, `no-cache` static, text logs |
+| `APP_TEMPLATES_DIR` | — | | Dev only: path to `./web` |
+| `OIDC_ISSUER_URL` | — | **yes** | Authentik per-provider issuer, trailing slash exactly as in discovery |
+| `OIDC_CLIENT_ID` | — | **yes** | |
+| `OIDC_CLIENT_SECRET` / `OIDC_CLIENT_SECRET_FILE` | — | **yes (one)** | Both set → startup error |
+| `OIDC_SCOPES` | `openid email profile` | | |
+| `OIDC_GROUPS_CLAIM` | `groups` | | |
+| `OIDC_ALLOWED_GROUPS` | *(empty = any user the IdP authenticates)* | | Comma list; primary access gate (§5.2) |
+| `OIDC_ADMIN_GROUP` | `recipes-admins` | | Empty = no admins |
+| `SESSION_IDLE_TTL` | `720h` | | |
+| `SESSION_MAX_TTL` | `8760h` | | |
+| `MAX_IMAGE_MB` | `15` | | Per uploaded/fetched image |
+| `MAX_IMAGES_PER_RECIPE` | `10` | | |
+| `IMAGE_MAX_PIXELS` | `50000000` | | |
+| `IMAGE_WORKERS` | `1` | | Concurrent image decodes |
+| `API_MAX_BODY_MB` | `40` | | |
+| `API_RATE_LIMIT_PER_MIN` | `60` | | Per token |
+| `IMAGE_FETCH_TIMEOUT` | `15s` | | |
+| `IMAGE_FETCH_ALLOW_HTTP` | `false` | | |
+| `LOG_LEVEL` | `info` | | `debug|info|warn|error` |
+| `LOG_FORMAT` | `json` | | `json|text` |
+| `BACKUP_AUTO` | `true` | | In-process daily backup |
+| `BACKUP_AT` | `03:30` | | Local time (`TZ`) of the daily backup |
+| `BACKUP_KEEP` | `7` | | Snapshots kept |
+| `CATEGORIZER` | `noop` | | Only `noop` in v1 |
+| `TZ` | `UTC` | | Display times, backup schedule, file names |
+| `TMPDIR` | `/data/tmp` (set in Dockerfile) | | |
+| `GOMEMLIMIT` | `300MiB` (set in compose) | | |
+
+Parsed once at startup into a typed struct; invalid/missing required values → exit code 2 with a clear message.
+Unknown `APP_*`/`OIDC_*` variables are logged as warnings (typo detection). The effective non-secret config is
+logged at info level.
 
 ## 13. Logging, health, observability
 
-- `slog` JSON with fields `time, level, msg, request_id, method, path, status, duration_ms, bytes, user_id` (never email, tokens, cookies or query strings that might hold codes). The access log skips `/healthz` and `/static/*` at info level.
-- `GET /healthz` → 200 `ok` when the process is alive (no DB access).
-- `GET /readyz` → 200 if a DB `SELECT 1` succeeds within 1 s **and** `${APP_DATA_DIR}/media` is writable (create/remove a temp file, result cached 30 s); otherwise 503 with a JSON reason. The Docker `HEALTHCHECK` uses `/app/recipes healthcheck`, a subcommand that GETs `http://127.0.0.1:8080/readyz`, because distroless has no curl.
-- `recipes version` and the footer show version/commit/build date (set with `-ldflags`).
+- `slog` fields: `time, level, msg, request_id, method, path, status, duration_ms, bytes, client_ip, user_id`.
+  Never: email, tokens, cookies, `Authorization`, query strings of `/auth/*`. Access log skips `/healthz`,
+  `/readyz` and `/static/*` at info level.
+- `GET /healthz` → `200 ok` while the process runs (no DB). **Docker `HEALTHCHECK` uses this** via the
+  `recipes healthcheck` subcommand (GET `http://127.0.0.1${APP_LISTEN_ADDR}/healthz`, 2 s timeout, exit 0/1).
+- `GET /readyz` → JSON `{"db":"ok","media":"ok","oidc":"ok|pending"}`; 200 if `db` and `media` are ok
+  (`SELECT 1` within 1 s; media dir writable, cached 30 s), else 503. `oidc: pending` does not fail readiness.
+- `recipes version` and the settings page show version, commit and build date (`-ldflags`).
 
 ## 14. Database runtime
 
-- DSN: `file:${APP_DATA_DIR}/recipes.db?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_txlock=immediate`.
-- Two pools: **writer** `SetMaxOpenConns(1)`, used for all write transactions; **reader** `SetMaxOpenConns(4)`, used for reads. This avoids `SQLITE_BUSY` storms.
-- Migrations run on `serve` startup (goose `Up`, embedded) before the listener opens. `recipes migrate status|up|down-to N` is available for manual use.
+- DSN: `file:${APP_DATA_DIR}/recipes.db?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_txlock=immediate`
+  (pragmas apply to every pooled connection).
+- Two pools: **writer** `SetMaxOpenConns(1)` for all write transactions; **reader** `SetMaxOpenConns(4)`.
+- Startup: migrations run before the listener opens. If `goose_db_version` is **higher** than the newest embedded
+  migration → refuse to start (exit 3) with "database is newer than this binary". Migrations are forward-only
+  (no `down` in production; `migrate down-to` is not offered).
 
 ## 15. LLM-categorization extension point (design only)
 
@@ -279,66 +393,91 @@ Config is parsed once at startup into a typed struct. Invalid or missing require
 package categorize
 
 type RecipeSnapshot struct {
-    ID          int64
-    Language    string
-    Title       string
-    Description string
-    Ingredients []string
-    Steps       []string
-    OvenModes   []string
-    Category    string   // current
-    Labels      []string // current
+    ID, Language, Title, Description string
+    Ingredients, Steps, OvenModes    []string
+    Categories, Tags                 []string // current
 }
 
 type Suggestion struct {
-    Category   string    // must be a known category key or ""
-    AddLabels  []string
-    Confidence float64   // 0..1
+    Categories []string // known category slugs only
+    Tags       []string
+    Confidence float64  // 0..1
     Model      string
 }
 
 type Categorizer interface {
-    Suggest(ctx context.Context, r RecipeSnapshot, knownCategories []string, knownLabels []string) (Suggestion, error)
+    Suggest(ctx context.Context, r RecipeSnapshot, knownCategories, knownTags []string) (Suggestion, error)
 }
 
 type Noop struct{}
 func (Noop) Suggest(context.Context, RecipeSnapshot, []string, []string) (Suggestion, error) { return Suggestion{}, nil }
 ```
 
-- **Events** (`internal/events`): `RecipeCreated`, `RecipeUpdated`, `InboxItemReceived`, `InboxItemAccepted`, `RecipeDeleted`, each `{RecipeID, UserID, At}`. `Bus.Publish` is called **after commit**. Handlers run asynchronously in a bounded worker goroutine (buffered channel of 100; if full, drop and log a warning). v1 registers no categorization subscriber.
-- **Future contract** (not built in v1): a subscriber on `InboxItemReceived`/`RecipeCreated` calls `Categorizer.Suggest`. It writes labels with `recipe_labels.source='llm'`, and sets the category only if it is still `other`. The UI marks LLM labels with a small ✨ and lets the user remove them. Schema support (`recipe_labels.source`) is in v1, so no migration will be needed later.
+- **Events** (`internal/events`): `RecipeCreated`, `RecipeUpdated`, `InboxItemReceived`, `InboxItemAccepted`,
+  `RecipeDeleted`, each `{RecipeID, ActorID, At}`, published **after commit**. One worker goroutine, buffered channel
+  of 100; when full, drop and log a warning. Events are a latency optimisation only — never the sole trigger.
+- **Durable marker**: `recipes.categorized_at` is NULL for new or imported recipes. The future categorization worker
+  processes rows with `categorized_at IS NULL` (on events, and on a periodic scan after restart), so nothing is lost
+  when an event is dropped. v1 never sets it and registers no subscriber.
+- **Future contract**: suggestions are written as `recipe_labels.source='llm'`; categories are only added, never
+  removed; the UI marks LLM labels with ✨ and lets users remove them. No migration is needed.
 
-## 16. Backup considerations
+## 16. Backups (app side)
 
-- Everything that matters is in `/data`: `recipes.db` (+`-wal`, `-shm`) and `media/`.
-- **Do not copy `recipes.db` with a plain file copy while the app is running.** Use `recipes backup` (run with `docker exec <ctr> /app/recipes backup`), which runs `VACUUM INTO '/data/backups/recipes-YYYYMMDD-HHMMSS.db'` (a consistent snapshot) and with `--rotate` keeps `BACKUP_KEEP` snapshots. Media files are immutable once written, so an incremental file-level copy of `media/` (e.g. Cosmos/restic/rsync of the whole volume) is consistent enough. Back up the DB snapshot **after** the media copy, or accept that a few orphan files may remain; the sweeper handles those.
-- Restore: stop the container, replace `recipes.db` with the snapshot (delete `-wal`/`-shm`), restore `media/`, start.
-- The app also runs `recipes backup --rotate` internally once a day at 03:30 local container time (`TZ` env, default UTC) unless `BACKUP_AUTO=false`.
+- `recipes backup` (also run in-process daily at `BACKUP_AT` when `BACKUP_AUTO=true`): `VACUUM INTO
+  '/data/backups/recipes-YYYYMMDDTHHMMSSZ.db'`, `PRAGMA integrity_check` on the result, write
+  `recipes-<ts>.media.txt` (list of referenced storage keys), prune beyond `BACKUP_KEEP`. Safe while serving.
+- Media files are immutable. Off-host copies take the snapshot first, then `media/` (`50 §8`); a file deleted in
+  between renders as the placeholder (§9).
+- Restore and upgrade procedures: `50 §8`.
 
-## 17. Taskfile targets (`Taskfile.yml`, v3)
+## 17. CLI subcommands (`/app/recipes <cmd>`)
+
+| Command | Purpose |
+|---|---|
+| `serve` (default) | Run the server (migrates first) |
+| `healthcheck` | Docker health probe (§13) |
+| `migrate status` / `migrate up` | Manual migration control |
+| `reindex` | Rebuild `recipe_fts` |
+| `backup [--out DIR]` | One snapshot now + prune |
+| `user list` | ID, display name, email, admin, last login |
+| `user revoke-sessions <id\|email>` | Delete all sessions of a user |
+| `user delete <id> [--yes]` | User deletion procedure (`30 §3`); prints what will be deleted and asks unless `--yes` |
+| `version` | Version, commit, build date |
+
+Subcommands other than `serve`/`healthcheck`/`version` open the same DB file and can run while `serve` runs.
+
+## 18. Taskfile targets (`Taskfile.yml`, v3)
+
+Single Taskfile at the repo root; this list is canonical. Dev-stack details are in `50 §4`, image release in `50 §9`.
 
 | Target | Does |
 |---|---|
 | `default` | `task --list` |
-| `dev` | `docker compose -f deploy/docker-compose.yml up -d mock-oidc` then `go run ./cmd/recipes serve` with dev env (`APP_ENV=development`, `APP_TEMPLATES_DIR=./web`) |
-| `run` | `go run ./cmd/recipes serve` |
-| `build` | `CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version={{.VERSION}} -X main.commit={{.COMMIT}}" -o bin/recipes ./cmd/recipes` |
-| `test` | `go test -race ./...` (race needs CGO; the task sets `CGO_ENABLED=1` only for tests) |
-| `test:cover` | Coverage report to `bin/coverage.html` |
-| `lint` | `golangci-lint run` + `task i18n:check` |
+| `dev:init` | Create `deploy/dev/.env` from the example with random secrets (idempotent) |
+| `dev:up` | Full dev stack: app container + local Authentik (`50 §4`) |
+| `dev:up:mock` | App + mock-oauth2-server |
+| `dev:run` | Start dev Authentik in compose, run `go run ./cmd/recipes serve` on the host with `APP_ENV=development`, `APP_TEMPLATES_DIR=./web`, `APP_DATA_DIR=./dev-data` |
+| `dev:logs` / `dev:down` / `dev:reset` | Compose logs / stop / stop and delete volumes (prompts) |
+| `build` | `CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X main.date={{.DATE}}" -o bin/recipes ./cmd/recipes` |
+| `test` | `CGO_ENABLED=1 go test -race ./...` (race detector needs cgo and a C compiler; tests only) |
+| `test:e2e` | End-to-end suite (`60 §6`) against `dev:up:mock` |
+| `test:cover` | Coverage HTML to `bin/coverage.html` |
+| `lint` | `golangci-lint run` + `task i18n:check` + `task csp:check` |
 | `fmt` | `gofmt -s -w . && goimports -w .` |
-| `i18n:check` | `go run ./internal/i18n/cmd/i18ncheck`: keys equal in en/he, no unused keys referenced from templates |
+| `i18n:check` | `go run ./internal/i18n/cmd/i18ncheck` |
+| `csp:check` | Fails if any template contains `<script>` with inline code, an `on*=` attribute, `style=`, or an `http(s)://` script/style URL |
 | `migrate:new -- NAME` | `goose -dir internal/db/migrations create NAME sql` |
-| `migrate:status` | `go run ./cmd/recipes migrate status` |
-| `vendor:htmx` | Download pinned htmx version + SRI check into `web/static/vendor/` |
-| `docker:build` | `docker build -t ${IMAGE:-ghcr.io/OWNER/ninja-recipes}:{{.VERSION}} .` |
-| `docker:push` | Push the image (+ `latest`) |
-| `compose:up` / `compose:down` / `compose:logs` | Full dev stack (app + mock-oidc) |
-| `backup` | `docker compose exec app /app/recipes backup` |
-| `ci` | `fmt` check, `lint`, `test`, `build` |
+| `vendor:htmx` | Download the pinned htmx version, verify its SHA-256, write `web/static/vendor/htmx.min.js` |
+| `docker:build` | Local single-arch image |
+| `docker:release VERSION=X.Y.Z` | Multi-arch build + push (`50 §9`) |
+| `backup` | `docker compose … exec app /app/recipes backup` |
+| `ci` | fmt check, lint, test, build, test:e2e |
 
-## 18. Non-functional targets
-- Responsive from 360 px (phones) to 2560 px. Layout breakpoints and touch targets ≥ 44 px are in the UI spec. Cook view uses the Screen Wake Lock API (progressive) so the screen stays on.
-- First load on a mid-range phone over Wi-Fi under 1 s. HTML pages under 50 KB gzip excluding images.
-- Single user household concurrency, about 10 users max.
-- Accessibility: semantic HTML, labels on every input, visible focus, WCAG AA contrast.
+## 19. Non-functional targets
+
+- Responsive 360 px – 2560 px; breakpoints and touch targets in `70 §3`.
+- First load on a mid-range phone over Wi-Fi < 1 s; HTML < 50 KB gzip excluding images.
+- Household concurrency: ~10 users.
+- Accessibility: semantic HTML, labels on every input, visible focus, WCAG 2.2 AA contrast (AAA for oven settings
+  in cook mode).

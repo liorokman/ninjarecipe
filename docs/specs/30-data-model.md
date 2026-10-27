@@ -1,246 +1,270 @@
 # 30 — Data Model & SQLite Schema
 
-Owner: Architect / Go Lead. Status: authoritative for implementation.
-Companion docs: `20-architecture.md`, `25-oven-settings.md`, `40-api.md`.
+Owner: Architect. Status: **canonical** for every table, column, constraint, index and seed row.
+Other documents refer to this one and must not restate the schema. Behaviour that *uses* the schema
+(authz, search, events) is canonical in `20-architecture.md`; oven-field semantics in `25-oven-settings.md`.
 
-## 1. Storage & SQLite Configuration
+## 1. Storage conventions
 
-- **Engine:** Pure Go SQLite (`modernc.org/sqlite`, CGO-free).
-- **File location:** `/data/recipes.db`.
-- **Journal mode:** `WAL` (Write-Ahead Logging).
-- **Synchronous:** `NORMAL`.
-- **Foreign Keys:** `PRAGMA foreign_keys = ON;` (must be executed on every opened connection).
-- **Busy Timeout:** `PRAGMA busy_timeout = 5000;` (5 seconds).
-- **Concurrency model:** Single write connection pool (`SetMaxOpenConns(1)`), multiple read connection pools.
+- Engine, pragmas, pools: see `20-architecture.md §14`. Database file: `${APP_DATA_DIR}/recipes.db`.
+- **Timestamps** are stored as `TEXT` in RFC 3339 UTC with millisecond precision (`2026-10-27T13:30:00.000Z`),
+  written by Go (`time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")`). Column defaults use
+  `strftime('%Y-%m-%dT%H:%M:%fZ','now')` so ad-hoc inserts produce the same format. Lexical order = time order.
+- **Public IDs** (`users.id`, `recipes.id`, `api_tokens.id`, `recipe_images.id`) are UUID v4 strings.
+  Child rows that are never addressed individually use `INTEGER PRIMARY KEY`.
+- Booleans are `INTEGER` `0/1` with a `CHECK`.
+- `updated_at` is set by the service layer on every write (no triggers).
+- Migrations: goose v3, embedded, table `goose_db_version`. **Until the first production deployment, `0001`
+  and `0002` may be edited in place; afterwards migrations are forward-only and append-only.**
+  On startup, if the DB version is higher than the newest embedded migration, the binary refuses to start
+  (explicit check; goose does not do this by itself). See `20-architecture.md §14`.
 
-## 2. Entities & Relationships Overview
+## 2. Entity overview
 
 ```mermaid
 erDiagram
-    users ||--o{ sessions : "has"
-    users ||--o{ api_tokens : "owns"
-    users ||--o{ recipes : "owns"
-    recipes ||--o{ recipe_ingredients : "contains"
-    recipes ||--o{ recipe_steps : "contains"
-    recipes ||--o{ oven_stages : "configured with"
-    recipes ||--o{ recipe_images : "has"
-    recipes }o--o{ recipe_labels : "tagged with"
+    users ||--o{ sessions : has
+    users ||--o{ api_tokens : owns
+    users |o--o{ recipes : owns
+    users ||--o{ recipe_favourites : marks
+    users ||--o{ recipe_views : views
+    recipes ||--o{ recipe_ingredients : contains
+    recipes ||--o{ recipe_steps : contains
+    recipes ||--o{ oven_stages : "cooked with"
+    recipes ||--o{ recipe_images : has
+    recipes ||--o{ recipe_labels : "tagged with"
     labels ||--o{ recipe_labels : "applies to"
-    recipes ||--o{ recipe_cook_logs : "tracks"
+    recipes ||--o{ recipe_cook_logs : "cooked as"
+    recipes ||--o{ recipe_favourites : ""
+    recipes ||--o{ recipe_views : ""
 ```
 
-### Deletion & Cascade Policy
-- **Hard Delete Rule:** When a recipe is deleted, its record is deleted from SQLite.
-- Foreign keys use `ON DELETE CASCADE` for:
-  - `recipe_ingredients`
-  - `recipe_steps`
-  - `oven_stages`
-  - `recipe_images` (Note: image metadata in DB is deleted via cascade; file removal on `/data/media` is triggered in the transaction commit hook in Go service layer).
-  - `recipe_labels`
-  - `recipe_cook_logs`
-- **User Removal Policy:**
-  - If a user is deleted from Authentik or the DB:
-    - User's **private** recipes and inbox items are deleted (cascade).
-    - User's **shared** recipes: either reassigned to an admin or marked with `owner_id = NULL` (system owner). In this spec, to maintain consistency with household use, recipes have `owner_id TEXT NULL REFERENCES users(id) ON DELETE SET NULL`. Shared recipes remain available to all household members.
-    - User's sessions and API tokens are cascaded on delete.
+## 3. Lifecycle and deletion rules
 
----
+| Event | Effect (all in one write transaction; image files removed after commit, see `20 §9`) |
+|---|---|
+| Recipe deleted (hard) | Row deleted; FK `ON DELETE CASCADE` removes ingredients, steps, stages, images rows, labels links, cook logs, favourites, views; FTS row deleted by the service. |
+| Inbox item rejected | Same as recipe deleted. |
+| Cook-log entry deleted | Its photo (`recipe_images` row with `kind='cook_log'`) and files are deleted too. |
+| Recipe **unshared** (`shared → private`) | All `recipe_favourites` and `recipe_views` rows of users **other than the owner** for that recipe are deleted. Cook logs are kept (they become visible to the owner only, since only the owner can view the recipe). |
+| User deleted (`recipes user delete <id>` CLI only; there is no automatic deletion) | Service procedure, in order: (1) hard-delete every recipe the user owns that is `private` or `status='inbox'` (including images); (2) set `owner_id = NULL` on their `shared` recipes; (3) delete the user row (cascades sessions, tokens, cook logs, favourites, views). The FK `ON DELETE SET NULL` on `recipes.owner_id` is a safety net only. |
+| User disabled in Authentik | Nothing in the DB. New logins fail; existing sessions remain until expiry or `recipes user revoke-sessions`. |
 
-## 3. SQL Migrations (goose format)
+Ownerless shared recipes (`owner_id IS NULL`) stay shared and editable by everyone; they can no longer be unshared
+(see authz in `20 §7`).
 
-### Migration `0001_initial_schema.sql`
+## 4. Migration `0001_initial_schema.sql`
 
 ```sql
 -- +goose Up
 -- +goose StatementBegin
 
--- 1. Users (provisioned via Authentik OIDC)
 CREATE TABLE users (
-    id TEXT PRIMARY KEY,                 -- OIDC 'sub' claim (e.g., UUID or unique string from Authentik)
-    email TEXT NOT NULL,
-    display_name TEXT NOT NULL,
-    avatar_url TEXT,
-    is_admin INTEGER NOT NULL DEFAULT 0, -- 1 for admins (mapped from Authentik group 'recipes-admins')
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id            TEXT PRIMARY KEY,                       -- UUID v4 (internal; never the OIDC sub)
+    oidc_issuer   TEXT NOT NULL,
+    oidc_subject  TEXT NOT NULL,
+    email         TEXT NOT NULL DEFAULT '',               -- informational, refreshed each login, NOT unique
+    display_name  TEXT NOT NULL,
+    is_admin      INTEGER NOT NULL DEFAULT 0 CHECK (is_admin IN (0,1)),
+    ui_language   TEXT CHECK (ui_language IN ('en','he')), -- NULL = not chosen yet
+    last_login_at TEXT,
+    created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    UNIQUE (oidc_issuer, oidc_subject)
 );
 
-CREATE UNIQUE INDEX idx_users_email ON users(email);
+CREATE TABLE oidc_login_states (
+    state      TEXT PRIMARY KEY,
+    verifier   TEXT NOT NULL,
+    nonce      TEXT NOT NULL,
+    return_to  TEXT NOT NULL DEFAULT '/',
+    expires_at TEXT NOT NULL
+);
+CREATE INDEX idx_oidc_login_states_expires ON oidc_login_states(expires_at);
 
--- 2. Sessions (Cookie-based session store)
 CREATE TABLE sessions (
-    id TEXT PRIMARY KEY,                 -- secure 32-byte hex random token
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    expires_at DATETIME NOT NULL,
-    last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    user_agent TEXT,
-    ip_address TEXT
+    id_hash      TEXT PRIMARY KEY,                        -- hex SHA-256 of the cookie token; raw token never stored
+    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id_token     TEXT,                                    -- for end-session id_token_hint
+    user_agent   TEXT,
+    ip_address   TEXT,
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    last_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    expires_at   TEXT NOT NULL
 );
+CREATE INDEX idx_sessions_user    ON sessions(user_id);
+CREATE INDEX idx_sessions_expires ON sessions(expires_at);
 
-CREATE INDEX idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
-
--- 3. API Tokens (for local AI assistant / headless access)
 CREATE TABLE api_tokens (
-    id TEXT PRIMARY KEY,                 -- UUID
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,                  -- Friendly name (e.g. "Home AI Assistant")
-    token_hash TEXT NOT NULL UNIQUE,     -- SHA-256 hash of the plain token
-    token_prefix TEXT NOT NULL,          -- First 8 characters for identification (e.g., nwf_live_...)
-    last_used_at DATETIME,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    expires_at DATETIME                  -- NULL for non-expiring
+    id           TEXT PRIMARY KEY,
+    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,
+    token_hash   TEXT NOT NULL UNIQUE,                    -- hex SHA-256 of the full token string
+    token_prefix TEXT NOT NULL,                           -- first 8 chars after 'nwr_', for display
+    scopes       TEXT NOT NULL DEFAULT 'inbox:write recipes:read', -- space-separated
+    last_used_at TEXT,
+    expires_at   TEXT,                                    -- NULL = never
+    revoked_at   TEXT,
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
-
 CREATE INDEX idx_api_tokens_user ON api_tokens(user_id);
 
--- 4. Categories & Labels
--- Starter categories are seeded: pizza, meat, poultry, fish, vegetables, baking, dessert, smoker, sides
+-- Categories (fixed, translated, admin-managed) and tags (free, user-created) share one table.
 CREATE TABLE labels (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL COLLATE NOCASE,   -- Name in English or Hebrew
-    slug TEXT NOT NULL UNIQUE,           -- Normalized URL slug
-    type TEXT NOT NULL CHECK(type IN ('category', 'tag')), -- category (main bucket) vs tag (free label)
-    icon TEXT,                           -- Lucide icon name or emoji
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id         INTEGER PRIMARY KEY,
+    type       TEXT NOT NULL CHECK (type IN ('category','tag')),
+    slug       TEXT NOT NULL,                             -- category: stable key, e.g. 'poultry'; tag: normalized name
+    name       TEXT NOT NULL,                             -- category: English name; tag: the tag as typed (normalized)
+    name_he    TEXT,                                      -- category: Hebrew name (required for categories); tag: NULL
+    icon       TEXT,                                      -- category: emoji shown on the home tile; tag: NULL
+    sort_order INTEGER NOT NULL DEFAULT 0,                -- category tile order
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    UNIQUE (type, slug),
+    CHECK (type = 'tag' OR name_he IS NOT NULL)
 );
 
-CREATE INDEX idx_labels_type ON labels(type);
-
--- 5. Recipes
 CREATE TABLE recipes (
-    id TEXT PRIMARY KEY,                 -- UUID v4
-    owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-    title TEXT NOT NULL,
-    description TEXT,
-    source_url TEXT,                     -- Web link if imported from web
-    source_name TEXT,                    -- Site name (e.g., "BBC Good Food", "Serious Eats")
-    prep_time_minutes INTEGER,
-    cook_time_minutes INTEGER,
-    servings INTEGER,
-    difficulty TEXT CHECK(difficulty IN ('easy', 'medium', 'hard', NULL)),
-    visibility TEXT NOT NULL DEFAULT 'private' CHECK(visibility IN ('private', 'shared')),
-    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('inbox', 'active', 'archived')),
-    language TEXT NOT NULL DEFAULT 'en' CHECK(language IN ('en', 'he')), -- for text direction detection
-    notes TEXT,                          -- Private/Owner cooking notes ("Next time use less salt")
-    rating INTEGER CHECK(rating BETWEEN 1 AND 5),
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id                TEXT PRIMARY KEY,
+    owner_id          TEXT REFERENCES users(id) ON DELETE SET NULL,
+    status            TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('inbox','active')),
+    visibility        TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private','shared')),
+    title             TEXT NOT NULL,
+    description       TEXT NOT NULL DEFAULT '',
+    notes             TEXT NOT NULL DEFAULT '',           -- standing tips on the recipe itself (editable like any field)
+    language          TEXT NOT NULL DEFAULT 'und' CHECK (language IN ('en','he','und')),
+    servings          INTEGER CHECK (servings BETWEEN 1 AND 100),
+    prep_minutes      INTEGER CHECK (prep_minutes >= 0),
+    source_url        TEXT,
+    source_name       TEXT,
+    import_key        TEXT,                               -- API idempotency key (see 40 §4.2)
+    version           INTEGER NOT NULL DEFAULT 1,         -- optimistic concurrency; +1 on every update
+    categorized_at    TEXT,                               -- future LLM hook: NULL = not yet processed (20 §15)
+    created_by        TEXT REFERENCES users(id) ON DELETE SET NULL,
+    updated_by        TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    CHECK (status = 'active' OR visibility = 'private')   -- inbox items are always private
 );
-
 CREATE INDEX idx_recipes_owner_status ON recipes(owner_id, status);
-CREATE INDEX idx_recipes_visibility ON recipes(visibility) WHERE status = 'active';
-CREATE INDEX idx_recipes_updated_at ON recipes(updated_at DESC);
+CREATE INDEX idx_recipes_shared       ON recipes(updated_at DESC) WHERE status = 'active' AND visibility = 'shared';
+CREATE INDEX idx_recipes_updated      ON recipes(updated_at DESC);
+CREATE UNIQUE INDEX idx_recipes_import_key ON recipes(owner_id, import_key) WHERE import_key IS NOT NULL;
+CREATE INDEX idx_recipes_source_url   ON recipes(owner_id, source_url) WHERE source_url IS NOT NULL;
 
--- 6. Recipe Ingredients
 CREATE TABLE recipe_ingredients (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id        INTEGER PRIMARY KEY,
     recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-    position INTEGER NOT NULL,
-    item TEXT NOT NULL,                  -- e.g. "Chicken thighs, skin-on"
-    amount REAL,                         -- e.g. 500
-    unit TEXT,                           -- Metric only: 'g', 'kg', 'ml', 'l', 'tbsp', 'tsp', 'unit', 'pinch'
-    note TEXT                            -- e.g. "room temperature"
+    position  INTEGER NOT NULL,                           -- 1..n, contiguous, set by the service from input order
+    section   TEXT,                                       -- optional group header, e.g. "Dough", "Topping"
+    amount    REAL CHECK (amount > 0),                    -- NULL = unquantified ("salt to taste")
+    unit      TEXT CHECK (unit IN ('g','kg','ml','l','tsp','tbsp','pcs','pinch')),
+    item      TEXT NOT NULL,                              -- e.g. "chicken thighs, skin-on"
+    raw_text  TEXT NOT NULL,                              -- the line as the user typed/pasted it (shown if parsing failed)
+    UNIQUE (recipe_id, position)
 );
 
-CREATE INDEX idx_recipe_ingredients_recipe ON recipe_ingredients(recipe_id, position);
-
--- 7. Recipe Steps (Instructions)
 CREATE TABLE recipe_steps (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-    position INTEGER NOT NULL,
-    instruction TEXT NOT NULL,           -- Markdown or plain text
-    title TEXT                           -- Optional step header (e.g., "Prep Rub", "Preheat Oven")
+    id            INTEGER PRIMARY KEY,
+    recipe_id     TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    position      INTEGER NOT NULL,
+    text          TEXT NOT NULL,                          -- plain text; no Markdown in v1
+    timer_seconds INTEGER CHECK (timer_seconds BETWEEN 1 AND 86400), -- optional tap-to-start timer (C3)
+    UNIQUE (recipe_id, position)
 );
 
-CREATE INDEX idx_recipe_steps_recipe ON recipe_steps(recipe_id, position);
-
--- 8. Ninja Woodfire Oven Stages (Detailed in 25-oven-settings.md)
+-- Field semantics and validation: 25-oven-settings.md §2–§4.
 CREATE TABLE oven_stages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-    position INTEGER NOT NULL,           -- Stage order: 1, 2, ...
-    mode TEXT NOT NULL CHECK(mode IN (
-        'pizza', 'max_roast', 'specialty_roast', 'top_heat', 
-        'bake', 'smoker', 'dehydrate', 'keep_warm'
-    )),
-    pizza_preset TEXT CHECK(pizza_preset IN (
-        'artisan', 'thin', 'pan', 'new_york', 'frozen', 'custom', NULL
-    )),
-    temperature_c INTEGER,               -- Range validated in application code per mode (40-370°C)
-    top_heat_level TEXT CHECK(top_heat_level IN ('hi', 'lo', NULL)),
-    duration_seconds INTEGER,            -- Stored in seconds; 0 or NULL for manual stop
-    woodfire INTEGER NOT NULL DEFAULT 0 CHECK(woodfire IN (0, 1)), -- Pellet smoke enabled?
-    pellet_blend TEXT CHECK(pellet_blend IN ('all_purpose', 'robust', 'other', NULL)),
-    pellet_scoops INTEGER CHECK(pellet_scoops BETWEEN 1 AND 3),
-    accessory TEXT CHECK(accessory IN (
-        'pizza_stone', 'pro_heat_pan', 'roast_rack', 'accessory_frame', NULL
-    )),
-    frame_level TEXT CHECK(frame_level IN ('low', 'high', NULL)),
-    target_internal_temp_c INTEGER       -- Optional meat probe target temp
+    id                 INTEGER PRIMARY KEY,
+    recipe_id          TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    position           INTEGER NOT NULL,
+    mode               TEXT NOT NULL CHECK (mode IN ('pizza','gourmet_roast','max_roast','smoker','bake','broil','dehydrate','keep_warm')),
+    pizza_preset       TEXT CHECK (pizza_preset IN ('artisan','thin_crust','new_york','chicago','calzone','custom')),
+    temperature_c      INTEGER CHECK (temperature_c BETWEEN 20 AND 400),  -- coarse DB guard; real limits in 25 §4. Gourmet Roast: Stage 1
+    duration_seconds   INTEGER CHECK (duration_seconds >= 0),             -- Gourmet Roast: Stage 1
+    temperature2_c     INTEGER CHECK (temperature2_c BETWEEN 20 AND 400), -- Gourmet Roast Stage 2 only
+    duration2_seconds  INTEGER CHECK (duration2_seconds >= 0),            -- Gourmet Roast Stage 2 only
+    preheat_minutes    INTEGER CHECK (preheat_minutes BETWEEN 0 AND 120),
+    woodfire           INTEGER NOT NULL DEFAULT 0 CHECK (woodfire IN (0,1)),
+    pellet_blend       TEXT CHECK (pellet_blend IN ('all_purpose','robust','other')),
+    pellet_note        TEXT,                              -- e.g. "cherry", "hickory"
+    accessories        TEXT NOT NULL DEFAULT '[]',        -- JSON array of Accessory keys (pizza_stone, pro_heat_pan, roast_rack, own_pan), sorted, unique
+    target_core_temp_c INTEGER CHECK (target_core_temp_c BETWEEN 30 AND 100),
+    notes              TEXT NOT NULL DEFAULT '',
+    UNIQUE (recipe_id, position)
 );
 
-CREATE INDEX idx_oven_stages_recipe ON oven_stages(recipe_id, position);
-
--- 9. Recipe Images
 CREATE TABLE recipe_images (
-    id TEXT PRIMARY KEY,                 -- UUID v4
-    recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-    position INTEGER NOT NULL DEFAULT 0, -- 0 is the primary cover image
-    file_path TEXT NOT NULL,             -- Relative path inside /data/media/ (e.g. 2026/10/uuid.jpg)
-    thumb_path TEXT NOT NULL,            -- Relative path to thumbnail (e.g. 2026/10/uuid_thumb.jpg)
-    file_size_bytes INTEGER NOT NULL,
-    width INTEGER NOT NULL,
-    height INTEGER NOT NULL,
-    mime_type TEXT NOT NULL DEFAULT 'image/jpeg',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id          TEXT PRIMARY KEY,
+    recipe_id   TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    storage_key TEXT NOT NULL UNIQUE,                     -- 32 hex chars; file layout in 20 §9
+    kind        TEXT NOT NULL DEFAULT 'recipe' CHECK (kind IN ('recipe','cook_log')), -- cook_log photos are not in the gallery
+    position    INTEGER,                                  -- recipe photos: 1 = cover; cook_log photos: NULL
+    width       INTEGER NOT NULL,                         -- of the 'full' variant
+    height      INTEGER NOT NULL,
+    bytes       INTEGER NOT NULL,                         -- full + thumb on disk
+    caption     TEXT,
+    source_url  TEXT,                                     -- when fetched by the API
+    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    UNIQUE (recipe_id, position),
+    CHECK ((kind = 'recipe') = (position IS NOT NULL))
 );
 
-CREATE INDEX idx_recipe_images_recipe ON recipe_images(recipe_id, position);
-
--- 10. Recipe <-> Label Join Table
 CREATE TABLE recipe_labels (
     recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-    label_id INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+    label_id  INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+    source    TEXT NOT NULL DEFAULT 'user' CHECK (source IN ('user','assistant','llm')),
     PRIMARY KEY (recipe_id, label_id)
 );
-
 CREATE INDEX idx_recipe_labels_label ON recipe_labels(label_id);
 
--- 11. Cook History Log ("Cooked it")
 CREATE TABLE recipe_cook_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id        INTEGER PRIMARY KEY,
     recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    cooked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,                          -- Post-cook observations
-    rating INTEGER CHECK(rating BETWEEN 1 AND 5)
+    user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    cooked_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    note      TEXT NOT NULL DEFAULT '',
+    rating    INTEGER CHECK (rating BETWEEN 1 AND 5),
+    image_id  TEXT UNIQUE REFERENCES recipe_images(id) ON DELETE SET NULL  -- optional photo (kind = 'cook_log')
+);
+CREATE INDEX idx_cook_logs_recipe ON recipe_cook_logs(recipe_id, cooked_at DESC);
+CREATE INDEX idx_cook_logs_user   ON recipe_cook_logs(user_id, cooked_at DESC);
+
+CREATE TABLE recipe_favourites (
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipe_id  TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (user_id, recipe_id)
 );
 
-CREATE INDEX idx_recipe_cook_logs_recipe ON recipe_cook_logs(recipe_id, cooked_at DESC);
+-- One row per (user, recipe): last time the user opened the recipe page or cook mode (B3).
+CREATE TABLE recipe_views (
+    user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    viewed_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, recipe_id)
+);
+CREATE INDEX idx_recipe_views_user ON recipe_views(user_id, viewed_at DESC);
 
--- 12. SQLite FTS5 Full-Text Search Table
-CREATE VIRTUAL TABLE recipes_fts USING fts5(
+-- Full-text index; maintained by the service layer (20 §11). One row per ACTIVE recipe.
+CREATE VIRTUAL TABLE recipe_fts USING fts5(
     recipe_id UNINDEXED,
     title,
     description,
     ingredients,
     steps,
-    notes,
-    tokenize = 'trigram'                -- Trigram supports English and Hebrew substring matching
+    labels,        -- category names (EN + HE) and tag names
+    notes,         -- recipes.notes + all cook-log notes
+    tokenize = 'trigram remove_diacritics 1'
 );
-
--- Triggers to maintain FTS index synchronized with recipes, ingredients, steps
--- Note: Application code triggers an async/sync rebuild or updates on transaction commit
--- to cleanly concatenate child rows (ingredients, steps).
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS recipes_fts;
+DROP TABLE IF EXISTS recipe_fts;
+DROP TABLE IF EXISTS recipe_views;
+DROP TABLE IF EXISTS recipe_favourites;
 DROP TABLE IF EXISTS recipe_cook_logs;
 DROP TABLE IF EXISTS recipe_labels;
 DROP TABLE IF EXISTS recipe_images;
@@ -251,67 +275,63 @@ DROP TABLE IF EXISTS recipes;
 DROP TABLE IF EXISTS labels;
 DROP TABLE IF EXISTS api_tokens;
 DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS oidc_login_states;
 DROP TABLE IF EXISTS users;
 -- +goose StatementEnd
 ```
 
----
+Notes:
+- `recipe_fts.recipe_id` is `UNINDEXED`, so `DELETE FROM recipe_fts WHERE recipe_id = ?` scans the FTS table.
+  That is acceptable at the stated scale (< 10k recipes). Do **not** map FTS `rowid` to the implicit rowid of
+  `recipes`: a table without an `INTEGER PRIMARY KEY` may have its rowids renumbered by `VACUUM`/`VACUUM INTO`,
+  which would corrupt the mapping in restored backups.
+- Inbox items are **not** in `recipe_fts`; the row is inserted when an item is accepted.
+- There is deliberately no `recipes.rating` column: ratings live only in `recipe_cook_logs` (see §6).
 
-## 4. Starter Data Seeding (Migration `0002_seed_starter_labels.sql`)
+## 5. Migration `0002_seed_categories.sql`
+
+Categories are seeded with stable slugs. Admins can add, rename (both languages), reorder or delete categories
+later from `/admin/categories` (`40 §2`). Deleting a category removes its links (cascade); recipes are not deleted.
 
 ```sql
 -- +goose Up
--- +goose StatementBegin
-INSERT INTO labels (name, slug, type, icon) VALUES
-('Pizza', 'pizza', 'category', 'pizza'),
-('Meat', 'meat', 'category', 'beef'),
-('Poultry & Chicken', 'chicken', 'category', 'drumstick'),
-('Fish & Seafood', 'fish', 'category', 'fish'),
-('Vegetables', 'vegetables', 'category', 'carrot'),
-('Baking & Bread', 'baking', 'category', 'croissant'),
-('Dessert', 'dessert', 'category', 'cake'),
-('Smoked', 'smoked', 'category', 'flame'),
-('Sides', 'sides', 'category', 'salad'),
--- Common tags
-('Woodfire Flavor', 'woodfire-flavor', 'tag', 'sparkles'),
-('Quick & Easy', 'quick-easy', 'tag', 'clock'),
-('Weekend Cook', 'weekend', 'tag', 'calendar');
--- +goose StatementEnd
+INSERT INTO labels (type, slug, name, name_he, icon, sort_order) VALUES
+('category','pizza',        'Pizza',             'פיצה',             '🍕', 10),
+('category','bread_dough',  'Bread & Dough',     'לחם ובצקים',       '🍞', 20),
+('category','beef',         'Beef',              'בקר',              '🥩', 30),
+('category','lamb',         'Lamb',              'טלה',              '🍖', 40),
+('category','pork',         'Pork',              'חזיר',             '🥓', 50),
+('category','poultry',      'Chicken & Poultry', 'עוף',              '🍗', 60),
+('category','fish_seafood', 'Fish & Seafood',    'דגים ופירות ים',   '🐟', 70),
+('category','vegetables',   'Vegetables',        'ירקות',            '🥦', 80),
+('category','sides',        'Sides',             'תוספות',           '🥔', 90),
+('category','desserts',     'Desserts',          'קינוחים',          '🍰', 100),
+('category','snacks_dried', 'Snacks & Dried',    'חטיפים ומיובשים',  '🥨', 110),
+('category','other',        'Other',             'אחר',              '🍽️', 120);
 
 -- +goose Down
--- +goose StatementBegin
-DELETE FROM labels;
--- +goose StatementEnd
+DELETE FROM labels WHERE type = 'category' AND created_by IS NULL;
 ```
 
----
+"Smoked" is not a category: it is derived from the stages (any stage `smoker` or `woodfire = 1`) and appears on the
+home screen as a virtual tile (see `70 §4.1`). Hebrew names are suggestions for native review.
 
-## 5. FTS Synchronization Strategy
+## 6. Derived values (computed in queries, not stored)
 
-Because ingredients and steps are in normalized 1:N relational tables, standard row triggers on `recipes` alone would miss ingredient edits.
-The application service layer maintains `recipes_fts` within the transaction that modifies a recipe:
+| Value | Definition |
+|---|---|
+| Primary mode | `25 §5` |
+| Total oven time | `SUM(COALESCE(duration_seconds,0) + COALESCE(duration2_seconds,0))` over stages (preheat excluded) |
+| Uses woodfire | `EXISTS` stage with `woodfire = 1` |
+| Cook count / last cooked | `COUNT(*)`, `MAX(cooked_at)` from `recipe_cook_logs` **visible to the viewer** (all logs for shared recipes; for private recipes only the owner can view the recipe at all) |
+| Average rating | `AVG(rating)` over the same logs, ignoring NULL; shown with one decimal and the count |
+| Recently cooked/viewed (per user) | Union of the user's `recipe_views.viewed_at` and own `recipe_cook_logs.cooked_at`, max per recipe, restricted to recipes the user can view, newest first, limit 10 |
+| "Last changed by" | `updated_at` + `users.display_name` of `updated_by` (shown only when `updated_by` ≠ viewer or differs from creator) |
 
-```sql
--- On Recipe Insert/Update:
-DELETE FROM recipes_fts WHERE recipe_id = :recipe_id;
+## 7. Label rules
 
-INSERT INTO recipes_fts(recipe_id, title, description, ingredients, steps, notes)
-VALUES (
-    :recipe_id,
-    :title,
-    :description,
-    (SELECT COALESCE(GROUP_CONCAT(item, ' '), '') FROM recipe_ingredients WHERE recipe_id = :recipe_id),
-    (SELECT COALESCE(GROUP_CONCAT(instruction, ' '), '') FROM recipe_steps WHERE recipe_id = :recipe_id),
-    :notes
-);
-```
-
-When querying:
-```sql
-SELECT r.* FROM recipes r
-JOIN recipes_fts fts ON r.id = fts.recipe_id
-WHERE recipes_fts MATCH :query
-AND (r.visibility = 'shared' OR r.owner_id = :current_user_id)
-AND r.status = 'active';
-```
-Trigram tokenization allows matching word stems and substrings for both Latin and Hebrew scripts seamlessly.
+- Category slugs: `^[a-z0-9_]{2,40}$`. Category names: 1–40 chars per language.
+- Tags: on input, trim, collapse whitespace, NFKC, lower-case (Latin only; Hebrew has no case), length 1–40.
+  `slug = name` after normalization. Tags are created on first use by any user; there is no tag management UI in v1.
+- A tag with no remaining `recipe_labels` rows is deleted by the hourly maintenance job.
+- Limits per recipe: ≤ 5 categories, ≤ 20 tags (`20 §8`).

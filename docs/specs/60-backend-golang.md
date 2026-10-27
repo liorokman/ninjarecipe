@@ -1,282 +1,144 @@
-# 60 — Golang Backend Specification
+# 60 — Go Backend: Code Conventions & Testing
 
-Owner: Golang Lead Developer. Status: authoritative for implementation.
-Companion docs: `20-architecture.md`, `25-oven-settings.md`, `30-data-model.md`, `40-api.md`.
+Owner: Go lead. Status: **canonical** for dependencies, code structure rules, error handling, view models and the
+test strategy. It does not restate architecture (`20`), schema (`30`), routes (`40`) or oven rules (`25`); where those
+documents define something, this one only says how to implement it.
 
-## 1. Toolchain & Dependencies
+## 1. Toolchain and dependencies
 
-- **Go Version:** Go 1.25+ (`go.mod` specifying `go 1.25.0`)
-- **CGO Policy:** Strict `CGO_ENABLED=0` (Static Linux binary, distroless execution)
-- **Key Modules:**
-  - `modernc.org/sqlite v1.34.0+`: Pure Go SQLite driver
-  - `github.com/pressly/goose/v3 v3.24.0+`: Database migrations
-  - `github.com/coreos/go-oidc/v3 v3.11.0+`: OpenID Connect verification
-  - `golang.org/x/oauth2 v0.24.0+`: OAuth 2.0 Auth Code & PKCE flow
-  - `github.com/nicksnyder/go-i18n/v2 v2.4.0+`: Internationalization (EN + HE)
-  - `golang.org/x/image v0.23.0+`: WebP decoding and CatmullRom high-quality resizing
-  - `github.com/jdeng/goheif v0.0.0-2021072784747-702e74a24661`: Pure Go HEIC/HEIF photo decoder (Samsung Galaxy camera support)
-  - `github.com/rwcarlsen/goexif/exif`: EXIF orientation parsing
-  - `golang.org/x/crypto v0.31.0+`: Secure random bytes and SHA-256 helpers
-  - Standard Library `log/slog`: Structured logging to stdout
+- Go 1.25.x pinned in `go.mod` (`go 1.25.0` + `toolchain`) and in the Dockerfile `GO_VERSION`.
+- `CGO_ENABLED=0` for every build artifact. cgo is used only by `go test -race`.
+- Allowed direct dependencies (anything else needs a spec change):
 
----
+| Module | Purpose |
+|---|---|
+| `modernc.org/sqlite` | SQLite driver (pure Go; bundles SQLite ≥ 3.45 for trigram `remove_diacritics`) |
+| `github.com/pressly/goose/v3` | Migrations |
+| `github.com/coreos/go-oidc/v3`, `golang.org/x/oauth2` | OIDC client |
+| `github.com/nicksnyder/go-i18n/v2`, `github.com/BurntSushi/toml`, `golang.org/x/text` | i18n, language matching, NFKC |
+| `golang.org/x/image` | WebP decode, CatmullRom resize |
+| `github.com/rwcarlsen/goexif` | EXIF orientation |
+| `github.com/google/uuid` | UUID v4 |
+| `golang.org/x/net/html` | **tests only**: HTML parsing for route/flag tests (§6.3) |
 
-## 2. Project Architecture & Package Responsibilities
+No HEIC decoder (HEIC is rejected, `20 §8`). No web framework, no ORM, no JS build tooling.
+Front-end vendored files: `web/static/vendor/htmx.min.js` (pinned version + SHA-256 in `Taskfile.yml`).
 
-```
-cmd/recipes/
-  main.go                 # CLI entry point (commands: serve, migrate, version)
-internal/
-  config/                 # Strongly typed config loaded from os.Environ
-  domain/                 # Plain domain structs and enums
-  db/                     # DB pool initialization, PRAGMA setup, goose runner
-    migrations/           # *.sql embedded files
-  store/                  # Repository implementations (recipes, users, stages, tokens, etc.)
-  oven/                   # OO101 validation logic, preset rules, bounds checking
-  auth/                   # Authentik OIDC flow, Session store, Bearer token auth, middleware
-  images/                 # Pipeline: decode, EXIF orientation fix, CatmullRom resize, strip metadata
-  events/                 # Light in-process publish/subscribe (e.g. recipe_created, recipe_updated)
-  categorize/             # Extension hook interface (NoopCategorizer, LLMCategorizer)
-  i18n/                   # Localizer middleware, active catalog loader
-  httpx/                  # Middleware: recovery, request ID, slog logging, security headers
-  web/                    # HTML template rendering, form decoders, htmx fragment handlers
-  api/                    # JSON REST API handlers (/api/v1/inbox, etc.)
-web/
-  embed.go                # //go:embed templates static
-  templates/              # HTML layout and partials
-  static/                 # CSS, client-side JS, icons
-locales/
-  en.toml                 # English translation strings
-  he.toml                 # Hebrew translation strings
-```
+## 2. Structure rules
 
----
+Package layout: `20 §3`. In addition:
 
-## 3. Database Layer & Transaction Patterns
-
-### SQLite Concurrency Model
-Due to SQLite's write serialization in WAL mode, the application sets up two distinct `*sql.DB` handles or a wrapped abstraction:
-1. **Writer DB (`db.Writer`):** `SetMaxOpenConns(1)` - Prevents `SQLITE_BUSY` contention during write transactions.
-2. **Reader DB (`db.Reader`):** `SetMaxOpenConns(max(4, runtime.NumCPU()))` - Enables concurrent reads in WAL mode without blocking the writer.
-
-### PRAGMAs Executed on Every Connection Open:
-```sql
-PRAGMA journal_mode = WAL;
-PRAGMA synchronous = NORMAL;
-PRAGMA foreign_keys = ON;
-PRAGMA busy_timeout = 5000;
-```
-
-### Store Interface Pattern
-```go
-package store
-
-type RecipeRepository interface {
-    Create(ctx context.Context, r *domain.Recipe) error
-    GetByID(ctx context.Context, id string) (*domain.Recipe, error)
-    Update(ctx context.Context, r *domain.Recipe) error
-    Delete(ctx context.Context, id string) error
-    ListActive(ctx context.Context, filter domain.RecipeFilter) ([]domain.RecipeSummary, error)
-    CountInbox(ctx context.Context, userID string) (int, error)
-}
-```
-
----
-
-## 4. OIDC & Authentication Flow (Authentik Integration)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Browser / User
-    participant App as Go Web Server
-    participant AK as Authentik IDP
-    participant DB as SQLite Store
-
-    User->>App: GET /auth/login
-    App->>App: Generate PKCE code_verifier + code_challenge (S256)<br/>Generate random state & nonce
-    App-->>User: Set short-lived state cookie & 302 Redirect to AK authorization URL
-    User->>AK: Authenticate (credentials / MFA)
-    AK-->>User: 302 Redirect to App /auth/callback?code=...&state=...
-    User->>App: GET /auth/callback?code=...&state=...
-    App->>App: Verify state cookie & exchange code with code_verifier
-    App->>AK: POST /application/o/token/ (backchannel)
-    AK-->>App: Return ID token + Access token
-    App->>App: Verify ID token signature & extract claims (sub, email, name, groups)
-    App->>DB: Upsert user record (sync display_name & admin status)
-    App->>DB: Create session (30 days TTL)
-    App-->>User: Set HTTP-only, SameSite=Lax session cookie (`nwf_session`)<br/>302 Redirect to /recipes
-```
-
-### Session Middleware:
-- Injected on all browser routes.
-- Resolves `nwf_session` cookie against `sessions` table.
-- Sliding expiration: if `expires_at - now < 15 days`, extends expiration by 30 days asynchronously.
-- Sets `*domain.User` in request context: `ctx = auth.WithUser(ctx, user)`.
-
-### Bearer Token Middleware:
-- Injected on `/api/v1/*` routes.
-- Extracts `Authorization: Bearer <token>`.
-- Hashes token using `sha256.Sum256([]byte(token))`.
-- Looks up valid token in `api_tokens` table.
-- Injects associated user into context.
-
----
-
-## 5. Ninja Woodfire Oven Validation Engine (`internal/oven`)
-
-The validation package guarantees that recipe stages match the capabilities of the Ninja Woodfire OO101:
+1. **Routing**: one `routes.go` per surface (`internal/web`, `internal/api`) registering every route of `40` with a
+   method pattern: `mux.Handle("POST /recipes/{id}/edit", h.updateRecipe)`. No catch-all handlers that inspect
+   `r.URL.Path` suffixes or `r.Method`. Path parameters via `r.PathValue`.
+2. **URL building**: templates get route URLs from a template func `url "recipe.edit" .Recipe.ID` backed by one Go
+   table of named routes, also used by `routes.go`. Hard-coded paths in templates are not allowed
+   (`task lint` greps for `href="/` and `action="/` in `web/templates`, allowing only `/static` via the `asset` func).
+3. **Handlers are thin**: parse input → call one service method → render. They do not run SQL, do not check
+   permissions themselves, and do not build user-visible text except through i18n keys.
+4. **Typed view models**: each page has a struct (`web/views.go`), never `map[string]any`. Every view model embeds
+   `Layout{Lang, Dir, User, InboxCount, Flash, CSRFOrigin, AssetVersion}`. Action flags are fields computed with
+   `authz` (`CanEdit bool` etc., `20 §7`); the fields required per page are listed in `70 §4`. A test asserts each
+   flag (§6.3).
+5. **Services** (`internal/service`) are the only place that opens write transactions, calls `authz`,
+   validates, maintains FTS and publishes events. Signatures take `ctx, actor *domain.User` first.
+   Minimum set:
 
 ```go
-package oven
-
-type Mode string
-const (
-    ModePizza           Mode = "pizza"
-    ModeMaxRoast        Mode = "max_roast"
-    ModeSpecialtyRoast  Mode = "specialty_roast"
-    ModeTopHeat         Mode = "top_heat"
-    ModeBake            Mode = "bake"
-    ModeSmoker          Mode = "smoker"
-    ModeDehydrate       Mode = "dehydrate"
-    ModeKeepWarm        Mode = "keep_warm"
-)
-
-type ValidationResult struct {
-    Errors   []string // Hard failures (block save)
-    Warnings []string // Soft notices (e.g. unusually high temp for mode)
-}
-
-func ValidateStage(stage domain.OvenStage) ValidationResult {
-    var res ValidationResult
-
-    switch stage.Mode {
-    case ModePizza:
-        if stage.PizzaPreset == "" {
-            res.Errors = append(res.Errors, "pizza_preset is required for pizza mode")
-        }
-        if stage.PizzaPreset == "custom" {
-            if stage.TemperatureC < 175 || stage.TemperatureC > 370 {
-                res.Errors = append(res.Errors, "custom pizza temperature must be between 175°C and 370°C")
-            }
-        }
-    case ModeSmoker:
-        if !stage.Woodfire {
-            res.Errors = append(res.Errors, "woodfire pellets must be enabled when using smoker mode")
-        }
-        if stage.TemperatureC < 60 || stage.TemperatureC > 190 {
-            res.Warnings = append(res.Warnings, "typical smoker temperatures are between 60°C and 190°C")
-        }
-    case ModeTopHeat:
-        if stage.Woodfire {
-            res.Errors = append(res.Errors, "woodfire pellets cannot be used with top heat mode")
-        }
-    case ModeKeepWarm:
-        if stage.Woodfire {
-            res.Errors = append(res.Errors, "woodfire pellets cannot be used with keep warm mode")
-        }
-    }
-    return res
-}
+CreateRecipe(ctx, actor, in RecipeInput) (*Recipe, error)
+UpdateRecipe(ctx, actor, id string, version int, in RecipeInput) (*Recipe, error)
+DeleteRecipe(ctx, actor, id string) error
+SetVisibility(ctx, actor, id string, shared bool) error
+CopyRecipe(ctx, actor, id string) (*Recipe, error)
+SetFavourite(ctx, actor, id string, on bool) error
+LogCook(ctx, actor, id string, note string, rating *int) error
+DeleteCookLog(ctx, actor, recipeID string, logID int64) error
+AddImage(ctx, actor, recipeID string, r io.Reader) (*Image, error)
+DeleteImage(ctx, actor, recipeID, imageID string) error
+ReorderImages(ctx, actor, recipeID string, ids []string) error
+GetRecipe(ctx, actor, id string) (*RecipeView, error)        // includes the actor's permission flags
+Search(ctx, actor, q SearchQuery) (SearchPage, error)
+Home(ctx, actor) (HomeData, error)
+ImportToInbox(ctx, actor, in RecipeImport, idemKey string) (*ImportResult, error)
+AcceptInbox(ctx, actor, id string, share bool) (nextID string, err error)
+EditAndAcceptInbox(ctx, actor, id string, in RecipeInput) (nextID string, err error)
+RejectInbox(ctx, actor, id string) (nextID string, err error)
+// tokens, users, labels, admin categories likewise
 ```
 
----
+6. **Errors**: services return sentinel or typed errors from `internal/domain`:
+   `ErrNotFound`, `ErrForbidden`, `ErrConflict` (version), `ErrDuplicate{ExistingID}`, `*ValidationError{Errors, Warnings []oven.Issue-like}`,
+   `ErrTooLarge`, `ErrUnsupportedMedia`. One function per surface maps them to HTTP (`web.renderError`,
+   `api.writeProblem`). Raw `err.Error()` strings are never shown to users (they are logged with the request ID).
+7. **Transactions**: `store.WithTx(ctx, writer, func(tx *sql.Tx) error)`; `BEGIN IMMEDIATE` via `_txlock=immediate`.
+   File-system side effects (image deletion) are queued in the tx context and run after commit.
+8. **Time**: inject a `Clock` interface in services and jobs so tests can control `now`.
+9. **Background jobs** (`internal/jobs`): hourly purge, nightly sweeper, daily backup; each a goroutine with a ticker,
+   stopped on shutdown; each run logged with duration.
 
-## 6. Image Processing Pipeline (`internal/images`)
+## 3. Database layer
 
-To protect storage and performance on low-power devices, all uploaded or fetched images pass through a strict processing pipeline before saving:
+- `db.Open(cfg) (reader, writer *sql.DB, err error)` applies the DSN of `20 §14` and the pool sizes; runs goose and the
+  version guard.
+- Repositories live in `internal/store`, one file per aggregate, using `database/sql` with hand-written SQL
+  (no ORM). Each repository method takes a `Querier` (`*sql.DB` or `*sql.Tx`).
+- Timestamps are parsed/formatted with a single helper pair (`store.formatTime`, `store.parseTime`) matching `30 §1`.
+- Recipe children (ingredients, steps, stages, labels) are replaced wholesale on update (delete + insert) inside the
+  transaction; positions are renumbered from 1.
 
-1. **Upload / Ingestion Limit:** Max 15 MB raw input. Accepts JPEG, PNG, WebP, and HEIC/HEIF (Samsung Galaxy camera format).
-2. **SSRF Guard on Web Fetching:** When `image_url` is provided in API import, the URL is parsed. Private/loopback IPs (e.g. `127.0.0.1`, `10.0.0.0/8`, `192.168.0.0/16`, `169.254.169.254`) are rejected with `400 Bad Request`.
-3. **Format Normalization & Orientation:** Reads image. If HEIC/HEIF is detected via magic bytes `ftypheic`/`ftypmif1`, converts stream using `goheif`. Reads EXIF orientation, applies transpose/rotation in memory using `golang.org/x/image/draw`.
-4. **Primary Image Generation:** Downscaled proportionally so max dimension is **1600px**, encoded to JPEG (quality 82). All EXIF metadata is dropped (guaranteeing privacy).
-5. **Thumbnail Generation:** Downscaled to **400x400px** square crop for fast grid rendering.
-6. **Storage Paths:** Files are written to `/data/media/{YYYY}/{MM}/{uuid}.jpg` and `/data/media/{YYYY}/{MM}/{uuid}_thumb.jpg`.
-7. **Hard Delete Execution:** When a recipe is deleted, a deferred cleanup hook scans and removes the physical files from disk.
+## 4. Oven validation
 
----
+Implement exactly `25 §4` as data in `internal/oven/spec.go` (one struct per mode with recommended/accepted bands and
+field rules) and a generic `Validate` that interprets the table. No per-mode `switch` with hard-coded numbers.
+`GET /api/v1/meta/oven` and the editor's embedded JSON are serialized from the same table.
 
-## 7. Categorizer / LLM Extensibility Hook
+## 5. Images
 
-To fulfill requirement 9 without adding LLM complexity immediately, an extensible domain event interface is defined:
+Implement `20 §9`. `internal/images` exposes `Process`, `Fetch` (SSRF-guarded client), `Store`/`Remove` and the sweeper.
+The semaphore (`IMAGE_WORKERS`) wraps `Process` for both browser uploads and API imports.
 
-```go
-package categorize
+## 6. Testing strategy
 
-import (
-    "context"
-    "cooking/internal/domain"
-)
+All tests run with `task test` (unit + integration, no network) and `task test:e2e` (against the dev mock stack).
+Coverage target: ≥ 80 % for `oven`, `authz`, `service`, `search` normalization and the ingredient parser.
 
-type Suggestion struct {
-    SuggestedCategories []string
-    SuggestedTags       []string
-    SuggestedOvenStages []domain.OvenStage
-}
+### 6.1 Unit tests
+- `oven`: every cell of the `25 §4` table (required/forbidden/hard/soft bounds), normalization.
+- `authz`: every cell of the `20 §7` table, for owner / other user / admin / ownerless shared recipe.
+- Search normalization (final letters, niqqud, NFKC, case) and query building (short terms, quoting).
+- Ingredient line parser (`40 §2.6`), including Hebrew units and decimal commas.
+- Config parsing (required vars, `_FILE` handling, both-set error, CIDR parsing).
+- `return_to` validation, token format/hashing, SSRF IP classification (including mapped/NAT64 forms).
 
-type Categorizer interface {
-    Analyze(ctx context.Context, recipe *domain.Recipe) (*Suggestion, error)
-}
+### 6.2 Store and service tests
+Against a fresh SQLite file in `t.TempDir()` with migrations applied. Cover: create/update/delete with children and
+FTS rows; version conflict; visibility change side effects (`30 §3`); user deletion procedure; copy duplicates
+image files; inbox idempotency key and duplicate `source_url`; image deletion after commit; search with every filter.
 
-// NoopCategorizer default implementation for v1
-type NoopCategorizer struct{}
+### 6.3 HTTP integration tests (required — these catch broken links and missing buttons)
+Use the real router from `routes.go` with `httptest.Server`. A test helper creates users and sessions **directly in
+the DB** (the binary has no login bypass).
 
-func (n *NoopCategorizer) Analyze(ctx context.Context, r *domain.Recipe) (*Suggestion, error) {
-    return nil, nil // No-op until LLM service is connected
-}
-```
-When a recipe lands in the inbox via the AI assistant, the `events.Bus` emits `RecipeImportedEvent`. In the future, a listener calls `Categorizer.Analyze` and annotates the draft recipe before the user reviews it.
+1. **Route-table test**: for every named route, assert the mux resolves it (`mux.Handler(req)` returns the expected
+   pattern) and that wrong methods give 405.
+2. **Rendered-link crawl**: for each page (home, list, recipe, cook, editor, inbox list/item, settings, tokens,
+   admin categories) rendered as (a) owner, (b) another user, (c) admin, parse the HTML and, for every `<a href>` and
+   every `<form action method>`, send the request (forms with their own fields) and assert the response is not
+   404/405 and, for forms, that the intended state change happened. *An Edit link or delete form pointing to an
+   unregistered path fails this test.*
+3. **Permission-flag matrix**: on `/recipes/{id}` for private/shared × owner/other/admin, assert presence or absence of
+   the Edit link, Delete button, visibility switch, Copy button, favourite heart, cook-log form (expected values from
+   `70 §4.3`). Assert 404 for a private recipe of another user.
+4. **Story flows** (one test each): create → view → edit (title and a stage change persist) → share → second user
+   edits → owner sees "Last changed by" → delete; inbox import via API → item page → edit-and-keep → appears in search;
+   version conflict shows the 409 page; expired session on POST redirects to `/signin` with `return_to`.
+5. **Security headers**: CSP exactly as `20 §8` on every HTML page; no `'unsafe-inline'`.
 
----
+### 6.4 End-to-end (`test/`, `task test:e2e`)
+Go tests driving the running dev mock stack over HTTP: real OIDC login through mock-oauth2-server
+(form login), API token creation, image upload of a real JPEG, backup subcommand, restart persistence (session
+still valid after `docker compose restart app`).
 
-## 8. Taskfile Specification (`Taskfile.yml`)
-
-The project uses Taskfile (v3) for unified local commands:
-
-```yaml
-version: '3'
-
-vars:
-  BINARY_NAME: recipes
-  BUILD_DIR: bin
-
-tasks:
-  default:
-    cmds:
-      - task: test
-
-  dev:
-    desc: Run server locally with mock auth
-    env:
-      ENV: development
-      PORT: "8080"
-      DATA_DIR: "./tmp/data"
-      BASE_URL: "http://localhost:8080"
-      MOCK_AUTH_ENABLED: "true"
-    cmds:
-      - mkdir -p tmp/data
-      - go run cmd/recipes/main.go serve
-
-  build:
-    desc: Build pure static Linux binary
-    env:
-      CGO_ENABLED: 0
-    cmds:
-      - mkdir -p {{.BUILD_DIR}}
-      - go build -trimpath -ldflags="-s -w" -o {{.BUILD_DIR}}/{{.BINARY_NAME}} ./cmd/recipes
-
-  test:
-    desc: Run unit and integration tests
-    cmds:
-      - go test -v -race ./...
-
-  docker:build:
-    desc: Build production container image
-    cmds:
-      - docker build -t cooking-recipes:latest .
-
-  docker:up:
-    desc: Run container with compose
-    cmds:
-      - docker compose -f docker-compose.yml up -d
-```
+### 6.5 Manual device checklist
+Browser-only behaviour (wake lock, timers, vibration, camera capture, RTL rendering, install to home screen) is
+verified with the checklist in `70 §10` before each release, on at least one Galaxy phone and the Tab S6 Lite.

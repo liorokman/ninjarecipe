@@ -64,7 +64,7 @@ Format: **As a …, I want …, so that …** followed by acceptance criteria (A
 **B1 (Must)** As Dana, I want the home screen to show **big category tiles with pictures** (Pizza, Meat, Chicken, Fish, Veg, Bread, Dessert, Smoked…), so that I can find things without typing.
 - AC1: Tiles are at least thumb-sized (roughly 2 per row on a phone), with a picture and a word.
 - AC2: Tapping a tile shows the recipes in it as cards with a photo, name, and the **oven mode + temperature** on the card.
-- AC3: A recipe can be in more than one category (e.g. "Chicken" and "Smoked").
+- AC3: A recipe can be in more than one category (e.g. "Chicken" and "Sides"). *Implementer: "Smoked" is a tile derived from the oven settings, not a category (`30 §5`).*
 
 **B2 (Must)** As Dana, I want a **search box** at the top where I type any word ("chicken", "עוף", "lemon"), so that I can find a recipe even if I only remember one ingredient.
 - AC1: Search matches recipe names, ingredients, categories and notes.
@@ -86,7 +86,7 @@ Format: **As a …, I want …, so that …** followed by acceptance criteria (A
 ### C. "At the oven" view (cooking mode)
 
 **C1 (Must)** As Dana, I want the **oven settings at the very top of every recipe in huge text**, so that I can read them from arm's length in sunlight.
-- AC1: Shows, in this order: **Mode** (e.g. Pizza / Max Roast / Specialty Roast / Bake / Smoker / Dehydrate / Keep Warm — *implementer: use the actual OO101 modes*), **Temperature in °C**, **Time** (e.g. "12 min" or "1 h 30 min"), **Woodfire/smoke: on/off** (and which pellets, if noted), plus any extra like "preheat 25 min" or "turn halfway".
+- AC1: Shows, in this order: **Mode** (e.g. Pizza / Gourmet Roast / Max Roast / Smoker / Bake / Broil / Dehydrate / Keep Warm — *implementer: modes per `25 §3`*), **Temperature in °C**, **Time** (e.g. "12 min" or "1 h 30 min"), **Woodfire/smoke: on/off** (and which pellets, if noted), plus any extra like "preheat 25 min" or "turn halfway".
 - AC2: Readable without zooming: temperature/time very large (think "wall clock" size), strong contrast.
 - AC3: If a recipe has **several stages** (e.g. smoke 2 h at 120 °C, then roast 10 min at 250 °C), each stage is shown as its own clearly numbered block.
 
@@ -139,21 +139,21 @@ Format: **As a …, I want …, so that …** followed by acceptance criteria (A
 
 **E1 (Must)** As Dana, I want an **Edit** button on my own recipes, so that I can fix the temperature after we learn it was too hot.
 - AC1: Same form as adding, pre-filled. Same draft protection (D4).
-- AC2: I can only edit recipes I own. Family recipes from others show **"Copy to my recipes"** (Nice) instead of Edit, or are read-only.
+- AC2: I can edit my own recipes and every **Family** recipe (owner decision: shared recipes are fully editable by everyone). Family recipes from others additionally offer **"Copy to my recipes"** (Nice) for making a personal variant.
 
 **E2 (Nice)** As Dana, I want to see "Last changed: 12 May by Lior", so that I know if a recipe was updated.
 
 ### F. Sharing with the family
 
 **F1 (Must)** As Dana, I want one clear switch **"Share with family"**, so that everyone in the house can see the recipe.
-- AC1: Switch on the recipe page and in the edit form. Wording: "Share with family" (on) / "Just me" (off).
+- AC1: Switch on the recipe page (and in the form when creating a recipe). Wording: "Share with family" (on) / "Just me" (off). Only the recipe's owner sees the switch; others see the badge.
 - AC2: Turning it on shows a short note: "Everyone in the family will see this recipe."
 - AC3: Turning it off on a shared recipe: "The family won't see this recipe any more."
 
 **F2 (Nice)** As Lior, I want to **send a link** to a recipe over WhatsApp, so that Savta can open it directly.
 - AC: A "Share link" button uses the phone's normal share sheet. The person still needs to be a family member with an account; after signing in they land on the recipe (A1-AC4).
 
-*Decision from owner: If a recipe is shared, full control is ceded to all users — any family member can edit or delete a shared recipe.*
+*Decision from owner: If a recipe is shared, full control is ceded to all users — any family member can edit or delete a shared recipe. Only the owner can switch it back to "Just me". Full rules: `20 §7`.*
 
 ### G. Deleting (permanent)
 
@@ -259,9 +259,9 @@ Sample friendly wording (EN / HE):
 7. Quick add with only Name required, oven-setting pickers, paste-a-block ingredients/steps.
 8. Photos from camera or gallery, auto-shrunk.
 9. Never lose a half-typed recipe.
-10. Edit own recipes.
+10. Edit own recipes and family recipes.
 11. "Share with family" switch, "Just me" by default.
-12. Delete with clear "forever" warning; only owner can delete.
+12. Delete with clear "forever" warning; private recipes only by their owner, family recipes by anyone in the family.
 13. Review assistant suggestions with Keep / Throw away.
 14. Full Hebrew with right-to-left layout; per-recipe text direction.
 15. Big buttons everywhere; no jargon; friendly error messages.
