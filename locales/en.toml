@@ -1,0 +1,361 @@
+# Backend-owned catalog (namespaces app, oven, unit, time, flash, err, issue). UI copy lives in ui.en.toml.
+
+["app.name"]
+other = "Ninja Woodfire Recipes"
+
+["app.version"]
+other = "Version"
+
+["oven.mode.pizza"]
+other = "Pizza"
+
+["oven.mode.gourmet_roast"]
+other = "Gourmet Roast"
+
+["oven.mode.max_roast"]
+other = "Max Roast"
+
+["oven.mode.smoker"]
+other = "Smoker"
+
+["oven.mode.bake"]
+other = "Bake"
+
+["oven.mode.broil"]
+other = "Broil"
+
+["oven.mode.dehydrate"]
+other = "Dehydrate"
+
+["oven.mode.keep_warm"]
+other = "Keep Warm"
+
+["oven.preset.artisan"]
+other = "Artisan"
+
+["oven.preset.thin_crust"]
+other = "Thin Crust"
+
+["oven.preset.new_york"]
+other = "New York Style"
+
+["oven.preset.chicago"]
+other = "Chicago Style"
+
+["oven.preset.calzone"]
+other = "Calzone"
+
+["oven.preset.custom"]
+other = "Custom"
+
+["oven.pellet.all_purpose"]
+other = "All-Purpose"
+
+["oven.pellet.robust"]
+other = "Robust"
+
+["oven.pellet.other"]
+other = "Other"
+
+["oven.accessory.pizza_stone"]
+other = "Pizza Stone"
+
+["oven.accessory.pro_heat_pan"]
+other = "Pro Heat Pan"
+
+["oven.accessory.roast_rack"]
+other = "Roast Rack"
+
+["oven.accessory.own_pan"]
+other = "Own pan or dish"
+
+["oven.frame.bottom"]
+other = "Frame: bottom level"
+
+["oven.frame.top"]
+other = "Frame: top level"
+
+["unit.g"]
+other = "g"
+
+["unit.kg"]
+other = "kg"
+
+["unit.ml"]
+other = "ml"
+
+["unit.l"]
+other = "l"
+
+["unit.tsp"]
+other = "tsp"
+
+["unit.tbsp"]
+other = "tbsp"
+
+["unit.pcs"]
+other = "pcs"
+
+["unit.pinch"]
+other = "pinch"
+
+["time.h"]
+other = "h"
+
+["time.min"]
+other = "min"
+
+["time.s"]
+other = "s"
+
+["time.just_now"]
+other = "just now"
+
+["flash.recipe_saved"]
+other = "Recipe saved"
+
+["flash.recipe_deleted"]
+other = "Recipe deleted"
+
+["flash.recipe_copied"]
+other = "Copied to your recipes"
+
+["flash.kept"]
+other = "Kept. It's in your recipes now."
+
+["flash.thrown_away"]
+other = "Thrown away"
+
+["flash.inbox_empty"]
+other = "All done! Nothing left to review."
+
+["flash.token_created"]
+other = "Access key created"
+
+["flash.token_revoked"]
+other = "Access key removed"
+
+["flash.category_saved"]
+other = "Category saved"
+
+["flash.category_deleted"]
+other = "Category deleted"
+
+["flash.language_saved"]
+other = "Language changed"
+
+["flash.photo_failed"]
+other = "Photo didn't upload"
+
+["flash.signed_out"]
+other = "You are signed out"
+
+["err.validation"]
+other = "Validation failed"
+
+["err.unauthorized"]
+other = "Authentication required"
+
+["err.forbidden"]
+other = "Not allowed"
+
+["err.not_found"]
+other = "Not found"
+
+["err.conflict"]
+other = "Conflict"
+
+["err.duplicate"]
+other = "Duplicate"
+
+["err.too_large"]
+other = "Too large"
+
+["err.unsupported_media"]
+other = "Unsupported media type"
+
+["err.rate_limited"]
+other = "Too many requests"
+
+["err.internal"]
+other = "Internal error"
+
+["err.bad_request"]
+other = "Bad request"
+
+["err.busy"]
+other = "Busy, try again"
+
+["err.unavailable"]
+other = "Temporarily unavailable"
+
+["err.heic"]
+other = "This photo format isn't supported. On Samsung: Camera settings → Advanced picture options → turn off High efficiency pictures."
+
+["err.too_large_image"]
+other = "This photo is too large."
+
+["err.image_failed"]
+other = "This photo couldn't be read."
+
+["err.too_many_images"]
+other = "This recipe already has the maximum number of photos."
+
+["issue.field.title"]
+other = "Name"
+
+["issue.field.description"]
+other = "Description"
+
+["issue.field.notes"]
+other = "Notes"
+
+["issue.field.language"]
+other = "Language"
+
+["issue.field.servings"]
+other = "Servings"
+
+["issue.field.prep_minutes"]
+other = "Prep time"
+
+["issue.field.source_url"]
+other = "Source link"
+
+["issue.field.source_name"]
+other = "Source name"
+
+["issue.field.category"]
+other = "Categories"
+
+["issue.field.tags"]
+other = "Keywords"
+
+["issue.field.ingredients"]
+other = "Ingredients"
+
+["issue.field.steps"]
+other = "Steps"
+
+["issue.field.mode"]
+other = "Oven function"
+
+["issue.field.pizza_preset"]
+other = "Pizza preset"
+
+["issue.field.temperature_c"]
+other = "Temperature"
+
+["issue.field.duration_seconds"]
+other = "Time"
+
+["issue.field.temperature2_c"]
+other = "Stage 2 temperature"
+
+["issue.field.duration2_seconds"]
+other = "Stage 2 time"
+
+["issue.field.preheat_minutes"]
+other = "Preheat time"
+
+["issue.field.woodfire"]
+other = "Woodfire flavour"
+
+["issue.field.pellet_blend"]
+other = "Pellet blend"
+
+["issue.field.pellet_note"]
+other = "Pellet note"
+
+["issue.field.accessories"]
+other = "Accessories"
+
+["issue.field.target_core_temp_c"]
+other = "Core temperature"
+
+["issue.field.visibility"]
+other = "Sharing"
+
+["issue.field.oven_stages"]
+other = "Oven stages"
+
+["issue.field.version"]
+other = "Version"
+
+["issue.field.name"]
+other = "Name"
+
+["issue.field.slug"]
+other = "Short name"
+
+["issue.field.name_he"]
+other = "Hebrew name"
+
+["issue.field.icon"]
+other = "Icon"
+
+["issue.required"]
+other = "{{.Field}} is required"
+
+["issue.forbidden"]
+other = "{{.Field}} can't be used here"
+
+["issue.invalid"]
+other = "{{.Field}} isn't valid"
+
+["issue.out_of_range.temperature"]
+other = "Between {{.Min}} and {{.Max}} °C"
+
+["issue.out_of_range.duration"]
+other = "Between {{.Min}} and {{.Max}}"
+
+["issue.out_of_range.number"]
+other = "Between {{.Min}} and {{.Max}}"
+
+["issue.warn.temperature"]
+other = "Unusual for {{.Mode}} ({{.Min}}-{{.Max}} °C)"
+
+["issue.warn.duration"]
+other = "Unusual for {{.Mode}} ({{.Min}}-{{.Max}})"
+
+["issue.too_long"]
+other = "{{.Field}} is too long (at most {{.Max}})"
+
+["issue.too_many"]
+other = "{{.Field}}: at most {{.Max}} allowed"
+
+["issue.duplicate"]
+other = "A recipe with this link already exists"
+
+["issue.version_conflict"]
+other = "Someone changed this recipe while you were editing."
+
+["issue.name_taken"]
+other = "This name is already used"
+
+["issue.token_limit"]
+other = "You already have the maximum number of access keys"
+
+["time.ago.minute"]
+one = "{{.Count}} minute ago"
+other = "{{.Count}} minutes ago"
+
+["time.ago.hour"]
+one = "{{.Count}} hour ago"
+other = "{{.Count}} hours ago"
+
+["time.ago.day"]
+one = "{{.Count}} day ago"
+other = "{{.Count}} days ago"
+
+["time.ago.week"]
+one = "{{.Count}} week ago"
+other = "{{.Count}} weeks ago"
+
+["time.ago.month"]
+one = "{{.Count}} month ago"
+other = "{{.Count}} months ago"
+
+["time.ago.year"]
+one = "{{.Count}} year ago"
+other = "{{.Count}} years ago"

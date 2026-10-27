@@ -1,0 +1,42 @@
+{{define "content"}}
+<article class="recipe" data-test="recipe" data-recipe-id="{{.RecipeBody.ID}}">
+  <header class="recipe-head">
+    <div class="recipe-title-row">
+      <h1 class="recipe-title" dir="{{if .RecipeBody.Dir}}{{.RecipeBody.Dir}}{{else}}auto{{end}}"{{with .RecipeBody.Lang}} lang="{{.}}"{{end}}>{{.RecipeBody.Title}}</h1>
+      {{if .CanFavourite}}
+      <form method="post" action="{{url "recipe.favourite" .RecipeBody.ID}}" hx-post="{{url "recipe.favourite" .RecipeBody.ID}}" hx-target="#fav-{{.RecipeBody.ID}}" hx-swap="outerHTML" class="fav-form">{{template "favourite_button" .FavouriteState}}</form>
+      {{end}}
+    </div>
+    <div class="recipe-badges">
+      {{if eq .RecipeBody.Visibility "shared"}}{{template "visibility_badge" "shared"}}{{else}}{{template "visibility_badge" "private"}}{{end}}
+      {{if .RecipeBody.OwnerName}}<span class="muted">{{T "recipe.by" "Name" .RecipeBody.OwnerName}}</span>{{end}}
+    </div>
+  </header>
+
+  {{template "recipe_hero" .RecipeBody}}
+  <div class="hero-cta">
+    <a class="btn btn-primary btn-xl" href="{{url "recipe.cook" .RecipeBody.ID}}" data-test="start-cooking">{{template "icon" "flame"}}{{T "recipe.start_cooking"}}</a>
+    {{if and (not .RecipeBody.Stages) .CanEdit}}<a class="btn btn-quiet" href="{{url "recipe.edit" .RecipeBody.ID}}">{{T "recipe.add_oven"}}</a>{{end}}
+  </div>
+  {{template "recipe_body" .RecipeBody}}
+  {{template "cooklog_section" .Logs}}
+
+  {{with .LastChanged}}<p class="last-changed muted" data-test="last-changed">{{T "recipe.last_changed" "Date" (fmtDate .At) "Name" .ByName}}</p>{{end}}
+
+  <div class="action-bar" data-test="action-bar">
+    {{if .CanEdit}}<a class="btn btn-secondary btn-lg" href="{{url "recipe.edit" .RecipeBody.ID}}" data-test="edit-link">{{template "icon" "edit"}}{{T "recipe.edit"}}</a>{{end}}
+    {{template "visibility_control" .Visibility}}
+    {{if .ShowCopy}}<form method="post" action="{{url "recipe.copy" .RecipeBody.ID}}" data-test="copy-form"><button type="submit" class="btn btn-secondary btn-lg">{{template "icon" "copy"}}{{T "recipe.copy"}}</button></form>{{end}}
+    <button type="button" class="btn btn-secondary btn-lg" data-action="share-link" data-url="{{.ShareURL}}" data-title="{{.RecipeBody.Title}}" data-test="share-link">{{template "icon" "share"}}{{T "recipe.share_link"}}</button>
+    {{if .CanDelete}}
+    <details class="more-menu">
+      <summary class="btn btn-secondary btn-lg icon-only" aria-label="{{T "common.more"}}">{{template "icon" "dots"}}</summary>
+      <div class="more-pop"><button type="button" class="menu-item menu-danger" data-action="open-dialog" data-target="delete-dialog" data-test="delete-open">{{template "icon" "trash"}}<span>{{T "recipe.delete"}}</span></button></div>
+    </details>
+    {{end}}
+  </div>
+</article>
+{{if .CanDelete}}{{template "delete_dialog" .Delete}}{{end}}
+{{template "lightbox"}}
+{{end}}
+

@@ -1,0 +1,46 @@
+{{define "content"}}
+<div class="page narrow tokens">
+  <h1 class="page-title">{{T "tokens.title"}}</h1>
+  <p class="lead">{{T "tokens.lead"}}</p>
+
+  {{if .NewToken}}
+  <section class="token-new" role="status" data-test="token-new">
+    <h2 class="block-title">{{T "tokens.created"}}</h2>
+    <p class="strong">{{T "tokens.once"}}</p>
+    <div class="copy-row">
+      <input type="text" readonly id="new-token" value="{{.NewToken}}" dir="ltr" aria-label="{{T "tokens.key"}}" data-test="token-value">
+      <button type="button" class="btn btn-primary" data-action="copy-text" data-target="new-token" data-test="token-copy">{{template "icon" "copy"}}{{T "tokens.copy"}}</button>
+    </div>
+  </section>
+  {{end}}
+
+  <section class="block">
+    <h2 class="block-title">{{T "tokens.existing"}}</h2>
+    {{if .Tokens}}
+    <div class="table-wrap"><table class="table" data-test="token-table">
+      <thead><tr><th scope="col">{{T "tokens.name"}}</th><th scope="col">{{T "tokens.scopes"}}</th><th scope="col">{{T "tokens.last_used"}}</th><th scope="col">{{T "tokens.status"}}</th><th scope="col"><span class="sr-only">{{T "tokens.actions"}}</span></th></tr></thead>
+      <tbody>{{range .Tokens}}
+        <tr><th scope="row" dir="auto">{{.Name}}<br><bdi class="muted mono">{{.Prefix}}…</bdi></th>
+          <td>{{range .Scopes}}<span class="badge">{{T (printf "tokens.scope.%s" .)}}</span> {{end}}</td>
+          <td>{{if .LastUsedAt}}{{fmtAgo .LastUsedAt}}{{else}}<span class="muted">{{T "tokens.never"}}</span>{{end}}</td>
+          <td><span class="badge status-{{.Status}}">{{T (printf "tokens.status.%s" .Status)}}</span>{{with .ExpiresAt}}<br><span class="muted">{{T "tokens.expires"}} {{fmtDate .}}</span>{{end}}</td>
+          <td>{{if eq .Status "active"}}<form method="post" action="{{url "tokens.revoke" .ID}}"><button type="submit" class="btn btn-danger btn-sm" data-test="token-revoke">{{T "tokens.revoke"}}</button></form>{{end}}</td></tr>
+      {{end}}</tbody></table></div>
+    {{else}}<p class="muted">{{T "tokens.none"}}</p>{{end}}
+  </section>
+
+  <section class="block">
+    <h2 class="block-title">{{T "tokens.new"}}</h2>
+    <form method="post" action="{{url "tokens.create"}}" class="stack" data-test="token-form">
+      <div class="field"><label class="field-label" for="tok-name">{{T "tokens.name_label"}}</label>
+        <input id="tok-name" name="name" type="text" required maxlength="80" dir="auto" placeholder="{{T "tokens.name_ph"}}">{{with index .FormErrors "name"}}<p class="field-error" role="alert">{{.}}</p>{{end}}</div>
+      <fieldset class="field"><legend class="field-label">{{T "tokens.scopes_label"}}</legend>
+        {{range .ScopeOptions}}<label class="check-row"><input type="checkbox" name="scopes" value="{{.}}"{{if eq . "inbox:write"}} checked{{end}}><span><strong>{{T (printf "tokens.scope.%s" .)}}</strong><br><span class="muted">{{T (printf "tokens.scope_help.%s" .)}}</span></span></label>{{end}}
+        {{with index .FormErrors "scopes"}}<p class="field-error" role="alert">{{.}}</p>{{end}}</fieldset>
+      <div class="field"><label class="field-label" for="tok-exp">{{T "tokens.expiry"}}</label>
+        <select id="tok-exp" name="expires_in_days">{{range .ExpiryOptions}}<option value="{{.}}">{{if eq . 0}}{{T "tokens.never_expires"}}{{else}}{{T "tokens.days" "Count" .}}{{end}}</option>{{end}}</select></div>
+      <button type="submit" class="btn btn-primary btn-lg" data-test="token-new-submit">{{template "icon" "plus"}}{{T "tokens.create"}}</button>
+    </form>
+  </section>
+</div>
+{{end}}

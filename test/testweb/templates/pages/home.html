@@ -1,0 +1,1 @@
+{{define "content"}}<h1>{{.Layout.Title}}</h1>{{range .Tiles}}<a data-test="tile" href="{{urlq "recipes.list" "category" .Slug}}">{{.Icon}} {{.Name}}</a>{{end}}<a href="{{urlq "recipes.list" "smoked" "1"}}">smoked</a>{{range .Recent}}{{template "recipe_card" .}}{{end}}{{range .Favourites}}{{template "recipe_card" .}}{{end}}{{end}}

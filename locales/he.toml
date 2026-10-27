@@ -1,0 +1,373 @@
+# Backend-owned catalog (namespaces app, oven, unit, time, flash, err, issue). UI copy lives in ui.he.toml.
+
+["app.name"]
+other = "מתכוני נינג'ה וודפייר"
+
+["app.version"]
+other = "גרסה"
+
+["oven.mode.pizza"]
+other = "פיצה"
+
+["oven.mode.gourmet_roast"]
+other = "צלייה גורמה (Gourmet Roast)"
+
+["oven.mode.max_roast"]
+other = "צלייה מקס (Max Roast)"
+
+["oven.mode.smoker"]
+other = "עישון (Smoker)"
+
+["oven.mode.bake"]
+other = "אפייה (Bake)"
+
+["oven.mode.broil"]
+other = "השחמה (Broil)"
+
+["oven.mode.dehydrate"]
+other = "ייבוש מזון (Dehydrate)"
+
+["oven.mode.keep_warm"]
+other = "שמירת חום (Keep Warm)"
+
+["oven.preset.artisan"]
+other = "פיצה ביתית (Artisan)"
+
+["oven.preset.thin_crust"]
+other = "בצק דק (Thin Crust)"
+
+["oven.preset.new_york"]
+other = "New York Style"
+
+["oven.preset.chicago"]
+other = "Chicago Style"
+
+["oven.preset.calzone"]
+other = "Calzone"
+
+["oven.preset.custom"]
+other = "מותאם אישית (Custom)"
+
+["oven.pellet.all_purpose"]
+other = "כללי"
+
+["oven.pellet.robust"]
+other = "עז"
+
+["oven.pellet.other"]
+other = "אחר"
+
+["oven.accessory.pizza_stone"]
+other = "אבן פיצה"
+
+["oven.accessory.pro_heat_pan"]
+other = "תבנית Pro Heat"
+
+["oven.accessory.roast_rack"]
+other = "רשת צלייה"
+
+["oven.accessory.own_pan"]
+other = "תבנית משלך"
+
+["oven.frame.bottom"]
+other = "מסגרת: מדף תחתון"
+
+["oven.frame.top"]
+other = "מסגרת: מדף עליון"
+
+["unit.g"]
+other = "גרם"
+
+["unit.kg"]
+other = "ק\"ג"
+
+["unit.ml"]
+other = "מ\"ל"
+
+["unit.l"]
+other = "ליטר"
+
+["unit.tsp"]
+other = "כפית"
+
+["unit.tbsp"]
+other = "כף"
+
+["unit.pcs"]
+other = "יח'"
+
+["unit.pinch"]
+other = "קורט"
+
+["time.h"]
+other = "שע'"
+
+["time.min"]
+other = "דק'"
+
+["time.s"]
+other = "שנ'"
+
+["time.just_now"]
+other = "הרגע"
+
+["flash.recipe_saved"]
+other = "המתכון נשמר"
+
+["flash.recipe_deleted"]
+other = "המתכון נמחק"
+
+["flash.recipe_copied"]
+other = "המתכון הועתק למתכונים שלך"
+
+["flash.kept"]
+other = "נשמר. המתכון נמצא עכשיו במתכונים שלך."
+
+["flash.thrown_away"]
+other = "נזרק"
+
+["flash.inbox_empty"]
+other = "הכול מוכן! אין עוד מתכונים לבדיקה."
+
+["flash.token_created"]
+other = "מפתח הגישה נוצר"
+
+["flash.token_revoked"]
+other = "מפתח הגישה הוסר"
+
+["flash.category_saved"]
+other = "הקטגוריה נשמרה"
+
+["flash.category_deleted"]
+other = "הקטגוריה נמחקה"
+
+["flash.language_saved"]
+other = "השפה שונתה"
+
+["flash.photo_failed"]
+other = "התמונה לא הועלתה"
+
+["flash.signed_out"]
+other = "התנתקת"
+
+["err.validation"]
+other = "האימות נכשל"
+
+["err.unauthorized"]
+other = "נדרשת הזדהות"
+
+["err.forbidden"]
+other = "אין הרשאה"
+
+["err.not_found"]
+other = "לא נמצא"
+
+["err.conflict"]
+other = "התנגשות"
+
+["err.duplicate"]
+other = "כפילות"
+
+["err.too_large"]
+other = "גדול מדי"
+
+["err.unsupported_media"]
+other = "סוג קובץ לא נתמך"
+
+["err.rate_limited"]
+other = "יותר מדי בקשות"
+
+["err.internal"]
+other = "שגיאה פנימית"
+
+["err.bad_request"]
+other = "בקשה לא תקינה"
+
+["err.busy"]
+other = "עסוק, נסו שוב"
+
+["err.unavailable"]
+other = "זמנית לא זמין"
+
+["err.heic"]
+other = "פורמט התמונה אינו נתמך. בסמסונג: הגדרות מצלמה ← אפשרויות תמונה מתקדמות ← כבו \"תמונות ביעילות גבוהה\"."
+
+["err.too_large_image"]
+other = "התמונה גדולה מדי."
+
+["err.image_failed"]
+other = "לא ניתן לקרוא את התמונה."
+
+["err.too_many_images"]
+other = "במתכון כבר יש את המספר המרבי של תמונות."
+
+["issue.field.title"]
+other = "השם"
+
+["issue.field.description"]
+other = "התיאור"
+
+["issue.field.notes"]
+other = "ההערות"
+
+["issue.field.language"]
+other = "השפה"
+
+["issue.field.servings"]
+other = "מספר המנות"
+
+["issue.field.prep_minutes"]
+other = "זמן ההכנה"
+
+["issue.field.source_url"]
+other = "הקישור למקור"
+
+["issue.field.source_name"]
+other = "שם המקור"
+
+["issue.field.category"]
+other = "הקטגוריות"
+
+["issue.field.tags"]
+other = "מילות המפתח"
+
+["issue.field.ingredients"]
+other = "המצרכים"
+
+["issue.field.steps"]
+other = "השלבים"
+
+["issue.field.mode"]
+other = "פונקציית התנור"
+
+["issue.field.pizza_preset"]
+other = "תוכנית הפיצה"
+
+["issue.field.temperature_c"]
+other = "הטמפרטורה"
+
+["issue.field.duration_seconds"]
+other = "הזמן"
+
+["issue.field.temperature2_c"]
+other = "טמפרטורת שלב 2"
+
+["issue.field.duration2_seconds"]
+other = "זמן שלב 2"
+
+["issue.field.preheat_minutes"]
+other = "זמן החימום"
+
+["issue.field.woodfire"]
+other = "טעם עץ"
+
+["issue.field.pellet_blend"]
+other = "תערובת הפלטים"
+
+["issue.field.pellet_note"]
+other = "הערת הפלטים"
+
+["issue.field.accessories"]
+other = "האביזרים"
+
+["issue.field.target_core_temp_c"]
+other = "טמפרטורת הליבה"
+
+["issue.field.visibility"]
+other = "השיתוף"
+
+["issue.field.oven_stages"]
+other = "שלבי התנור"
+
+["issue.field.version"]
+other = "הגרסה"
+
+["issue.field.name"]
+other = "השם"
+
+["issue.field.slug"]
+other = "השם הקצר"
+
+["issue.field.name_he"]
+other = "השם בעברית"
+
+["issue.field.icon"]
+other = "האייקון"
+
+["issue.required"]
+other = "{{.Field}} הוא שדה חובה"
+
+["issue.forbidden"]
+other = "אי אפשר להשתמש ב{{.Field}} כאן"
+
+["issue.invalid"]
+other = "{{.Field}} אינו תקין"
+
+["issue.out_of_range.temperature"]
+other = "בין {{.Min}} ל-{{.Max}} °C"
+
+["issue.out_of_range.duration"]
+other = "בין {{.Min}} ל-{{.Max}}"
+
+["issue.out_of_range.number"]
+other = "בין {{.Min}} ל-{{.Max}}"
+
+["issue.warn.temperature"]
+other = "יוצא דופן עבור {{.Mode}} ({{.Min}}-{{.Max}} °C)"
+
+["issue.warn.duration"]
+other = "יוצא דופן עבור {{.Mode}} ({{.Min}}-{{.Max}})"
+
+["issue.too_long"]
+other = "{{.Field}} ארוך מדי (לכל היותר {{.Max}})"
+
+["issue.too_many"]
+other = "{{.Field}}: מותר לכל היותר {{.Max}}"
+
+["issue.duplicate"]
+other = "כבר קיים מתכון עם הקישור הזה"
+
+["issue.version_conflict"]
+other = "מישהו שינה את המתכון בזמן שערכתם אותו."
+
+["issue.name_taken"]
+other = "השם כבר בשימוש"
+
+["issue.token_limit"]
+other = "כבר יש לכם את המספר המרבי של מפתחות גישה"
+
+["time.ago.minute"]
+one = "לפני דקה"
+two = "לפני שתי דקות"
+many = "לפני {{.Count}} דקות"
+other = "לפני {{.Count}} דקות"
+
+["time.ago.hour"]
+one = "לפני שעה"
+two = "לפני שעתיים"
+many = "לפני {{.Count}} שעות"
+other = "לפני {{.Count}} שעות"
+
+["time.ago.day"]
+one = "אתמול"
+two = "לפני יומיים"
+many = "לפני {{.Count}} ימים"
+other = "לפני {{.Count}} ימים"
+
+["time.ago.week"]
+one = "לפני שבוע"
+two = "לפני שבועיים"
+many = "לפני {{.Count}} שבועות"
+other = "לפני {{.Count}} שבועות"
+
+["time.ago.month"]
+one = "לפני חודש"
+two = "לפני חודשיים"
+many = "לפני {{.Count}} חודשים"
+other = "לפני {{.Count}} חודשים"
+
+["time.ago.year"]
+one = "לפני שנה"
+two = "לפני שנתיים"
+many = "לפני {{.Count}} שנים"
+other = "לפני {{.Count}} שנים"

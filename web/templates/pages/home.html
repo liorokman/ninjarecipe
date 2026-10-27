@@ -1,0 +1,36 @@
+{{define "content"}}
+<div class="page home">
+  <form class="searchbar" action="{{url "recipes.list"}}" method="get" role="search">
+    {{template "icon" "search"}}
+    <input type="search" name="q" dir="auto" autocomplete="off" placeholder="{{T "search.placeholder"}}" aria-label="{{T "search.label"}}" data-test="search-input">
+    <button type="submit" class="btn btn-primary">{{T "search.go"}}</button>
+  </form>
+
+  <section aria-labelledby="cats-title">
+    <h2 id="cats-title" class="block-title">{{T "home.categories"}}</h2>
+    <ul class="tiles" data-test="category-tiles">
+      {{range .Tiles}}<li><a class="tile" href="{{urlq "recipes.list" "category" .Slug}}"><span class="tile-icon" aria-hidden="true">{{.Icon}}</span><span class="tile-name">{{.Name}}</span></a></li>{{end}}
+      <li><a class="tile tile-smoked" href="{{urlq "recipes.list" "smoked" "1"}}" data-test="tile-smoked"><span class="tile-icon" aria-hidden="true">🔥</span><span class="tile-name">{{T "home.smoked"}}</span></a></li>
+    </ul>
+  </section>
+
+  {{if .Recent}}
+  <section aria-labelledby="recent-title" data-test="recent-row">
+    <h2 id="recent-title" class="block-title">{{T "home.recent"}}</h2>
+    <div class="hrow">{{range .Recent}}{{template "recipe_card" .}}{{end}}</div>
+  </section>
+  {{end}}
+
+  {{if .Favourites}}
+  <section aria-labelledby="fav-title" data-test="fav-row">
+    <div class="block-head"><h2 id="fav-title" class="block-title">{{T "home.favourites"}}</h2><a class="link-more" href="{{urlq "recipes.list" "fav" "1"}}">{{T "home.see_all"}}{{template "icon_dir" "chevron"}}</a></div>
+    <div class="hrow">{{range .Favourites}}{{template "recipe_card" .}}{{end}}</div>
+  </section>
+  {{end}}
+
+  {{if and (not .Recent) (not .Favourites)}}
+  <p class="muted home-empty">{{T "home.empty"}}</p>
+  {{end}}
+</div>
+<a class="fab" href="{{url "recipe.new"}}" data-test="fab-add">{{template "icon" "plus"}}<span>{{T "nav.add_recipe"}}</span></a>
+{{end}}

@@ -1,0 +1,63 @@
+version: 1
+metadata:
+  name: recipes-dev
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+entries:
+  - model: authentik_core.group
+    id: grp-users
+    identifiers: { name: recipes-users }
+  - model: authentik_core.group
+    id: grp-admins
+    identifiers: { name: recipes-admins }
+
+  - model: authentik_core.user
+    identifiers: { username: alice }
+    attrs:
+      name: Alice Dev
+      email: alice@example.test
+      password: alice            # dev only
+      groups: [!KeyOf grp-users, !KeyOf grp-admins]
+  - model: authentik_core.user
+    identifiers: { username: bob }
+    attrs:
+      name: Bob Dev
+      email: bob@example.test
+      password: bob              # dev only
+      groups: [!KeyOf grp-users]
+
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider
+    identifiers: { name: recipes-dev }
+    attrs:
+      client_type: confidential
+      client_id: !Env OIDC_CLIENT_ID
+      client_secret: !Env OIDC_CLIENT_SECRET
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      sub_mode: hashed_user_id
+      include_claims_in_id_token: true
+      issuer_mode: per_provider
+      access_token_validity: minutes=10
+      redirect_uris:
+        - { url: "http://localhost:8080/auth/callback", matching_mode: strict }
+        - { url: "http://localhost:8080/auth/logged-out", matching_mode: strict }   # post-logout redirect
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+
+  - model: authentik_core.application
+    id: app
+    identifiers: { slug: recipes }
+    attrs:
+      name: Recipe Keeper (dev)
+      provider: !KeyOf provider
+      meta_launch_url: http://localhost:8080/
+      policy_engine_mode: any
+
+  - model: authentik_policies.policybinding
+    identifiers: { target: !KeyOf app, group: !KeyOf grp-users, order: 0 }
+  - model: authentik_policies.policybinding
+    identifiers: { target: !KeyOf app, group: !KeyOf grp-admins, order: 1 }

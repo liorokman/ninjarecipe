@@ -1,0 +1,8 @@
+{{define "content"}}
+<div class="page center-card signin">
+  <img class="signin-logo" src="{{asset "icons/icon-192.svg"}}" alt="" width="96" height="96">
+  <h1 class="page-title">{{T "app.name"}}</h1>
+  <a class="btn btn-primary btn-xl" href="{{.LoginURL}}" data-test="signin-button">{{T "signin.button"}}</a>
+  <p class="muted small">{{T "signin.forgot"}}</p>
+</div>
+{{end}}

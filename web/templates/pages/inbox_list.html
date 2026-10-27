@@ -1,0 +1,23 @@
+{{define "content"}}
+<div class="page inbox">
+  <h1 class="page-title">{{T "inbox.title"}}</h1>
+  {{if .Items}}
+  <p class="lead">{{T "inbox.lead"}}</p>
+  <ul class="inbox-list" data-test="inbox-list">
+    {{range .Items}}
+    <li><a class="inbox-card" href="{{url "inbox.view" .ID}}" data-test="inbox-card">
+      <span class="card-thumb">{{if .ThumbURL}}<img src="{{.ThumbURL}}" alt="" loading="lazy" width="400" height="300">{{else}}<span class="thumb-ph" aria-hidden="true">🍽️</span>{{end}}</span>
+      <span class="card-body">
+        <span class="eyebrow">{{T "inbox.found_by"}}</span>
+        <span class="card-title" dir="{{if .Dir}}{{.Dir}}{{else}}auto{{end}}">{{.Title}}</span>
+        <span class="card-meta muted">{{if .SourceHost}}<bdi>{{.SourceHost}}</bdi> · {{end}}{{fmtDate .ReceivedAt}}</span>
+      </span>
+      {{template "icon_dir" "chevron"}}
+    </a></li>
+    {{end}}
+  </ul>
+  {{else}}
+  <div class="empty" data-test="inbox-empty"><p class="empty-icon" aria-hidden="true">🎉</p><p class="empty-title">{{T "inbox.empty"}}</p><a class="btn btn-primary btn-lg" href="{{url "home"}}">{{T "nav.home"}}</a></div>
+  {{end}}
+</div>
+{{end}}

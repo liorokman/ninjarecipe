@@ -1,0 +1,13 @@
+{{define "content"}}
+<div class="page center-card error-page" data-test="error-page" data-code="{{.Code}}">
+  <p class="empty-icon" aria-hidden="true">{{if eq .Code "not_found"}}🍳{{else}}⚠️{{end}}</p>
+  <h1 class="page-title">{{T (printf "error.%s.title" .Code)}}</h1>
+  <p class="lead">{{T (printf "error.%s.body" .Code)}}</p>
+  <div class="btn-row">
+    {{if eq .Code "not_allowed"}}<form method="post" action="{{url "auth.logout"}}"><button type="submit" class="btn btn-primary btn-xl" data-test="try-another">{{T "error.try_another"}}</button></form>
+    {{else if eq .Code "unavailable"}}<a class="btn btn-primary btn-xl" href="{{if .BackURL}}{{.BackURL}}{{else}}{{url "home"}}{{end}}">{{T "error.try_again"}}</a>
+    {{else}}<a class="btn btn-primary btn-xl" href="{{url "home"}}">{{T "nav.home"}}</a>{{if .BackURL}}<a class="btn btn-secondary btn-lg" href="{{.BackURL}}">{{T "error.go_back"}}</a>{{end}}{{end}}
+  </div>
+  {{if .RequestID}}<p class="muted small" dir="ltr">{{T "error.request_id"}} <bdi>{{.RequestID}}</bdi></p>{{end}}
+</div>
+{{end}}

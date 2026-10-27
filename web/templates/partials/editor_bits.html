@@ -1,0 +1,28 @@
+{{define "errs"}}{{range .}}<p class="field-error" role="alert">{{.}}</p>{{end}}{{end}}
+{{define "warns"}}{{range .}}<p class="field-warn">⚠️ {{.}}</p>{{end}}{{end}}
+
+{{/* Generic text/number field. dict: V (EditorView), Name, Label, Value, Type, Attrs-free; Help (optional i18n key); Auto (dir=auto) */}}
+{{define "text_field"}}{{$id := fieldID .Name}}<div class="field" data-field-name="{{.Name}}">
+  <label class="field-label" for="{{$id}}">{{.Label}}</label>
+  <input id="{{$id}}" name="{{.Name}}" type="{{if .Type}}{{.Type}}{{else}}text{{end}}" value="{{.Value}}"{{if .Auto}} dir="auto"{{end}}{{if .Inputmode}} inputmode="{{.Inputmode}}"{{end}}{{if .Required}} required{{end}}{{if .Max}} maxlength="{{.Max}}"{{end}}{{if index .V.Errors .Name}} aria-invalid="true"{{end}} autocomplete="off">
+  {{if .Help}}<p class="hint">{{.Help}}</p>{{end}}
+  {{template "errs" (index .V.Errors .Name)}}{{template "warns" (index .V.Warnings .Name)}}
+</div>{{end}}
+
+{{define "image_tile"}}<li class="photo-tile" data-image-id="{{.ID}}" data-test="photo-tile">
+  <img src="{{.ThumbURL}}" alt="" width="160" height="120">
+  <span class="cover-badge"{{if not .IsCover}} hidden{{end}}>{{T "editor.cover"}}</span>
+  <div class="photo-actions">
+    <button type="button" class="icon-btn" data-action="photo-cover" aria-label="{{T "editor.make_cover"}}">{{template "icon" "star"}}</button>
+    <button type="button" class="icon-btn" data-action="photo-earlier" aria-label="{{T "editor.photo_earlier"}}">{{template "icon_dir" "chevron"}}</button>
+    <button type="button" class="icon-btn" data-action="photo-later" aria-label="{{T "editor.photo_later"}}">{{template "icon_dir" "chevron"}}</button>
+    <button type="button" class="icon-btn" data-action="photo-delete" aria-label="{{T "editor.photo_delete"}}">{{template "icon" "x"}}</button>
+  </div>
+</li>{{end}}
+
+{{define "upload_error"}}<p class="upload-error" role="alert">{{.Message}}</p>{{end}}
+
+{{define "conflict"}}<div id="conflict" class="conflict flash flash-error" role="alert" data-test="conflict">
+  <p>{{T "editor.conflict"}}</p>
+  <a class="btn btn-secondary" href="{{.RecipeURL}}">{{T "editor.conflict_open"}}</a>
+</div>{{end}}

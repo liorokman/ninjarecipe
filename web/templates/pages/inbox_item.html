@@ -1,0 +1,32 @@
+{{define "content"}}
+<article class="recipe inbox-item" data-test="inbox-item" data-recipe-id="{{.RecipeBody.ID}}">
+  <header class="recipe-head">
+    <p class="eyebrow">{{T "inbox.found_by"}}</p>
+    <h1 class="recipe-title" dir="{{if .RecipeBody.Dir}}{{.RecipeBody.Dir}}{{else}}auto{{end}}"{{with .RecipeBody.Lang}} lang="{{.}}"{{end}}>{{.RecipeBody.Title}}</h1>
+  </header>
+  {{if .MissingOven}}<p class="flash flash-warning" role="status" data-test="missing-oven">{{template "icon" "flame"}}{{T "inbox.missing_oven"}}</p>{{end}}
+  {{template "recipe_hero" .RecipeBody}}
+  {{template "recipe_body" .RecipeBody}}
+
+  <form id="accept-form" method="post" action="{{url "inbox.accept" .RecipeBody.ID}}" class="inbox-bar-form">
+    <div class="inbox-bar" data-test="inbox-bar">
+      <label class="check-row"><input type="checkbox" name="share" value="1" data-test="inbox-share"><span>{{T "inbox.share_too"}}</span></label>
+      <div class="inbox-buttons">
+        <button type="submit" class="btn btn-primary btn-xl" data-test="inbox-keep">{{template "icon" "check"}}{{T "inbox.keep"}}</button>
+        <a class="btn btn-secondary btn-lg" href="{{url "inbox.edit" .RecipeBody.ID}}" data-test="inbox-edit">{{template "icon" "edit"}}{{T "inbox.edit_keep"}}</a>
+        <button type="button" class="btn btn-quiet btn-lg" data-action="open-dialog" data-target="reject-dialog" data-test="inbox-reject">{{template "icon" "x"}}{{T "inbox.throw_away"}}</button>
+      </div>
+    </div>
+  </form>
+</article>
+<dialog id="reject-dialog" class="dialog" aria-labelledby="reject-title" data-test="reject-dialog">
+  <div class="dialog-body">
+    <h2 id="reject-title">{{T "inbox.throw_title"}}</h2>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-primary btn-lg" data-action="close-dialog" autofocus>{{T "inbox.keep_looking"}}</button>
+      <form method="post" action="{{url "inbox.reject" .RecipeBody.ID}}"><button type="submit" class="btn btn-danger btn-lg" data-test="reject-confirm">{{T "inbox.throw_away"}}</button></form>
+    </div>
+  </div>
+</dialog>
+{{template "lightbox"}}
+{{end}}

@@ -1,0 +1,112 @@
+{{define "recipe_form"}}<form id="recipe-form" class="editor" method="post" action="{{.Action}}" novalidate data-mode="{{.Mode}}" data-test="recipe-form">
+  {{if .Form.Version}}<input type="hidden" name="version" value="{{.Form.Version}}">{{end}}
+
+  <div id="error-summary" class="error-summary" role="alert" tabindex="-1" data-test="error-summary"{{if not .Summary}} hidden{{end}}>
+    {{if .Summary}}<p class="strong">{{T "editor.fix_these"}}</p>
+    <ul>{{range .Summary}}<li><a href="#{{.FieldID}}">{{.Message}}</a></li>{{end}}</ul>{{end}}
+  </div>
+
+  <section class="ed-section" aria-labelledby="ed-name">
+    <h2 class="sr-only" id="ed-name">{{T "editor.name"}}</h2>
+    <div class="field" data-field-name="title">
+      <label class="field-label" for="f-title">{{T "editor.name"}}</label>
+      <input id="f-title" name="title" type="text" class="input-xl" dir="auto" required maxlength="200" value="{{.Form.Title}}" placeholder="{{T "editor.name_ph"}}"{{if index .Errors "title"}} aria-invalid="true"{{end}} autocomplete="off" data-test="title-input">
+      {{template "errs" (index .Errors "title")}}
+    </div>
+  </section>
+
+  <section class="ed-section" aria-labelledby="ed-photos">
+    <h2 class="block-title" id="ed-photos">{{T "editor.photos"}}</h2>
+    <ul class="photo-grid" id="photo-list" data-test="photo-list">
+      {{range .Images}}{{template "image_tile" (dict "ID" .ID "ThumbURL" .ThumbURL "FullURL" .FullURL "IsCover" .IsCover "RecipeID" $.Config.RecipeID)}}{{end}}
+    </ul>
+    <ul class="photo-grid" id="photo-queue" data-test="photo-queue"></ul>
+    <div id="photo-msg" role="status" aria-live="polite"></div>
+    <label class="btn btn-secondary btn-lg add-photo">{{template "icon" "camera"}}{{T "editor.add_photo"}}
+      <input type="file" id="photo-input" class="file-hidden" accept="image/jpeg,image/png,image/webp" multiple data-test="photo-input">
+    </label>
+    {{if eq .Mode "new"}}<p class="hint">{{T "editor.photos_not_in_draft"}}</p>{{end}}
+  </section>
+
+  <section class="ed-section" aria-labelledby="ed-oven">
+    <h2 class="block-title" id="ed-oven">{{T "editor.oven_settings"}}</h2>
+    <div id="stage-list" class="stage-list" data-test="stage-list">
+      {{range .Form.Stages}}{{template "stage_card" (dict "S" . "V" $)}}{{end}}
+    </div>
+    <button type="button" class="btn btn-secondary btn-lg" data-action="add-stage" data-test="add-stage">{{template "icon" "plus"}}{{T "editor.add_stage"}}</button>
+    <template id="stage-template">{{template "stage_card" (dict "S" .StageTemplate "V" $)}}</template>
+  </section>
+
+  <section class="ed-section" aria-labelledby="ed-ing">
+    <h2 class="block-title" id="ed-ing">{{T "editor.ingredients"}}</h2>
+    <div class="field">
+      <label class="field-label sr-only" for="f-ingredients">{{T "editor.ingredients"}}</label>
+      <textarea id="f-ingredients" name="ingredients" rows="8" dir="auto" placeholder="{{T "editor.ingredients_ph"}}" data-test="ingredients-input">{{.Form.Ingredients}}</textarea>
+      <p class="hint">{{T "editor.ingredients_help"}}</p>
+      {{template "errs" (index .Errors "ingredients")}}
+    </div>
+  </section>
+
+  <section class="ed-section" aria-labelledby="ed-steps">
+    <h2 class="block-title" id="ed-steps">{{T "editor.steps"}}</h2>
+    <div class="field">
+      <label class="field-label sr-only" for="f-steps">{{T "editor.steps"}}</label>
+      <textarea id="f-steps" name="steps" rows="8" dir="auto" placeholder="{{T "editor.steps_ph"}}" data-test="steps-input">{{.Form.Steps}}</textarea>
+      <p class="hint">{{T "editor.steps_help"}}</p>
+      {{template "errs" (index .Errors "steps")}}
+    </div>
+  </section>
+
+  <section class="ed-section" aria-labelledby="ed-cats">
+    <h2 class="block-title" id="ed-cats">{{T "editor.categories"}}</h2>
+    <div class="chips" id="category-chips" data-max="5">{{template "category_chips" .AllCategories}}</div>
+    <p class="hint" id="category-limit" hidden>{{T "editor.categories_max"}}</p>
+    {{template "errs" (index .Errors "category")}}
+    <div class="field tags-field">
+      <label class="field-label" for="tag-input">{{T "editor.tags"}}</label>
+      <div class="tag-box" id="tag-box"><ul class="chips" id="tag-chips" data-test="tag-chips"></ul>
+        <input id="tag-input" type="text" dir="auto" autocomplete="off" placeholder="{{T "editor.tags_ph"}}" aria-autocomplete="list" aria-controls="tag-suggest" data-test="tag-input"></div>
+      <ul id="tag-suggest" class="suggest" role="listbox" hidden></ul>
+      <input type="hidden" name="tags" id="tags-value" value="{{.Form.Tags}}">
+      <p class="hint">{{T "editor.tags_help"}}</p>
+    </div>
+  </section>
+
+  <details class="ed-section more" {{if or .Form.Description .Form.Notes .Form.Servings .Form.PrepMinutes .Form.SourceURL (index .Errors "servings") (index .Errors "source_url")}}open{{end}}>
+    <summary class="block-title">{{T "editor.more"}}</summary>
+    <div class="more-body">
+      <div class="field"><label class="field-label" for="f-description">{{T "editor.description"}}</label>
+        <textarea id="f-description" name="description" rows="3" dir="auto">{{.Form.Description}}</textarea></div>
+      <div class="field"><label class="field-label" for="f-notes">{{T "editor.notes"}}</label>
+        <textarea id="f-notes" name="notes" rows="3" dir="auto">{{.Form.Notes}}</textarea></div>
+      <div class="stage-grid">
+        {{template "text_field" (dict "V" . "Name" "servings" "Label" (T "editor.servings") "Value" .Form.Servings "Type" "number" "Inputmode" "numeric")}}
+        {{template "text_field" (dict "V" . "Name" "prep_minutes" "Label" (T "editor.prep_minutes") "Value" .Form.PrepMinutes "Type" "number" "Inputmode" "numeric")}}
+      </div>
+      <div class="field"><label class="field-label" for="f-language">{{T "editor.language"}}</label>
+        <select id="f-language" name="language" data-test="language-select">
+          <option value="und"{{if or (eq .Form.Language "und") (eq .Form.Language "")}} selected{{end}}>{{T "editor.language_auto"}}</option>
+          <option value="en"{{if eq .Form.Language "en"}} selected{{end}}>English</option>
+          <option value="he"{{if eq .Form.Language "he"}} selected{{end}}>עברית</option>
+        </select></div>
+      {{template "text_field" (dict "V" . "Name" "source_url" "Label" (T "editor.source_url") "Value" .Form.SourceURL "Type" "url" "Inputmode" "url")}}
+      {{template "text_field" (dict "V" . "Name" "source_name" "Label" (T "editor.source_name") "Value" .Form.SourceName "Auto" true)}}
+    </div>
+  </details>
+
+  {{if eq .Mode "new"}}
+  <section class="ed-section">
+    <label class="switch-row"><input type="checkbox" class="switch-input" name="visibility" value="shared"{{if eq .Form.Visibility "shared"}} checked{{end}} data-test="share-switch"><span class="switch" aria-hidden="true"><span class="switch-knob"></span></span><span class="switch-label">{{T "recipe.share_family"}}</span></label>
+    <p class="hint">{{T "editor.share_hint"}}</p>
+  </section>
+  {{else if eq .Mode "inbox"}}
+  <section class="ed-section">
+    <label class="switch-row"><input type="checkbox" class="switch-input" name="share" value="1" data-test="share-switch"><span class="switch" aria-hidden="true"><span class="switch-knob"></span></span><span class="switch-label">{{T "inbox.share_too"}}</span></label>
+  </section>
+  {{end}}
+
+  <div class="save-bar">
+    <p class="save-status" id="save-status" role="status" aria-live="polite"></p>
+    <button type="submit" class="btn btn-primary btn-xl" data-test="save">{{template "icon" "check"}}{{T .SubmitKey}}</button>
+  </div>
+</form>{{end}}

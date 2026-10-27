@@ -1,0 +1,12 @@
+bin/
+dist/
+*.out
+*.db
+*.db-wal
+*.db-shm
+data/
+dev-data/
+tmp/
+.DS_Store
+deploy/dev/.env
+test/ui/node_modules/

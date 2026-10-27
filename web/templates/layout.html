@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="{{.Layout.Lang}}" dir="{{.Layout.Dir}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false}'>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#e85d04">
+<title>{{if .Layout.Title}}{{.Layout.Title}} · {{end}}{{T "app.name"}}</title>
+<link rel="manifest" href="{{url "manifest"}}">
+<link rel="icon" href="{{asset "icons/favicon.svg"}}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{url "icon192"}}">
+<link rel="stylesheet" href="{{asset "css/app.css"}}">
+<script src="{{asset "js/theme-init.js"}}"></script>
+<script src="{{asset "vendor/htmx.min.js"}}" defer></script>
+<script type="module" src="{{asset "js/app.js"}}"></script>
+{{block "head" .}}{{end}}
+</head>
+<body class="{{if .Layout.User}}has-nav{{else}}no-nav{{end}}" data-user-id="{{with .Layout.User}}{{.ID}}{{end}}" data-active-nav="{{.Layout.ActiveNav}}">
+<a class="skip-link" href="#main">{{T "common.skip_to_content"}}</a>
+{{template "icon_sprite"}}
+<header class="topbar">
+  <a class="brand" href="{{url "home"}}">
+    <img class="brand-mark" src="{{asset "icons/favicon.svg"}}" alt="" width="32" height="32">
+    <span class="brand-name">{{T "app.name"}}</span>
+  </a>
+  {{with .Layout.User}}
+  <nav class="nav" aria-label="{{T "nav.main"}}">
+    <a class="nav-item{{if eq $.Layout.ActiveNav "home"}} is-active{{end}}" href="{{url "home"}}" data-test="nav-home"{{if eq $.Layout.ActiveNav "home"}} aria-current="page"{{end}}>
+      {{template "icon" "home"}}<span class="nav-label">{{T "nav.home"}}</span>
+    </a>
+    <a class="nav-item{{if eq $.Layout.ActiveNav "search"}} is-active{{end}}" href="{{url "recipes.list"}}" data-test="nav-search"{{if eq $.Layout.ActiveNav "search"}} aria-current="page"{{end}}>
+      {{template "icon" "search"}}<span class="nav-label">{{T "nav.search"}}</span>
+    </a>
+    <a class="nav-item nav-add{{if eq $.Layout.ActiveNav "add"}} is-active{{end}}" href="{{url "recipe.new"}}" data-test="nav-add">
+      <span class="nav-add-disc">{{template "icon" "plus"}}</span><span class="nav-label">{{T "nav.add"}}</span>
+    </a>
+    <a class="nav-item{{if eq $.Layout.ActiveNav "inbox"}} is-active{{end}}" href="{{url "inbox.list"}}" data-test="nav-inbox"{{if eq $.Layout.ActiveNav "inbox"}} aria-current="page"{{end}}>
+      <span class="nav-icon-wrap">{{template "icon" "inbox"}}{{if $.Layout.InboxCount}}<span class="badge-count" data-test="inbox-badge" aria-label="{{T "nav.inbox_count" "Count" $.Layout.InboxCount}}">{{$.Layout.InboxCount}}</span>{{end}}</span><span class="nav-label">{{T "nav.inbox"}}</span>
+    </a>
+    <button type="button" class="nav-item{{if eq $.Layout.ActiveNav "menu"}} is-active{{end}}" data-action="open-dialog" data-target="menu-dialog" data-test="nav-menu" aria-haspopup="dialog">
+      {{template "icon" "menu"}}<span class="nav-label">{{T "nav.menu"}}</span>
+    </button>
+  </nav>
+  {{else}}
+  <div class="topbar-end">{{template "language_button" $}}</div>
+  {{end}}
+</header>
+
+<main id="main" class="main" tabindex="-1">
+  <div id="flash" class="flash-region" aria-live="polite">{{with .Layout.Flash}}{{template "flash" .}}{{end}}</div>
+  {{template "content" .}}
+</main>
+
+{{with .Layout.User}}
+<dialog id="menu-dialog" class="dialog sheet" aria-labelledby="menu-title">
+  <div class="dialog-body">
+    <div class="dialog-head">
+      <h2 id="menu-title">{{.DisplayName}}</h2>
+      <button type="button" class="icon-btn" data-action="close-dialog" aria-label="{{T "common.close"}}">{{template "icon" "x"}}</button>
+    </div>
+    <ul class="menu-list">
+      <li>{{template "language_button" $}}</li>
+      <li>
+        <button type="button" class="menu-item" data-action="theme-toggle" data-test="theme-toggle">
+          <span class="theme-icons">{{template "icon" "sun"}}{{template "icon" "moon"}}</span>
+          <span>{{T "nav.theme"}}</span><span class="menu-value" data-theme-label></span>
+        </button>
+      </li>
+      <li><a class="menu-item" href="{{url "settings"}}">{{template "icon" "menu"}}<span>{{T "nav.settings"}}</span></a></li>
+      <li><a class="menu-item" href="{{url "tokens.list"}}">{{template "icon" "key"}}<span>{{T "nav.tokens"}}</span></a></li>
+      {{if .IsAdmin}}<li><a class="menu-item" href="{{url "admin.categories"}}">{{template "icon" "list"}}<span>{{T "nav.categories"}}</span></a></li>{{end}}
+      <li>
+        <form method="post" action="{{url "auth.logout"}}" data-action="sign-out">
+          <button type="submit" class="menu-item menu-danger" data-test="signout">{{template "icon" "arrow"}}<span>{{T "nav.sign_out"}}</span></button>
+        </form>
+      </li>
+    </ul>
+  </div>
+</dialog>
+{{end}}
+
+<script type="application/json" id="client-i18n">{{.Layout.ClientI18n}}</script>
+{{block "scripts" .}}{{end}}
+</body>
+</html>

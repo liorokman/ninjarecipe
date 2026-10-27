@@ -1,0 +1,1038 @@
+# UI copy (en). Owned by the UI package; keys follow docs/implementation-plan.md D14/D15.
+
+["admin.add"]
+other = "Add category"
+
+["admin.delete"]
+other = "Delete"
+
+["admin.delete_body"]
+one = "{{.Count}} recipe uses it. The recipe stays, only the category is removed."
+other = "{{.Count}} recipes use it. The recipes stay, only the category is removed."
+
+["admin.delete_title"]
+other = "Delete the category “{{.Name}}”?"
+
+["admin.icon"]
+other = "Icon"
+
+["admin.name_en"]
+other = "English name"
+
+["admin.name_he"]
+other = "Hebrew name"
+
+["admin.order"]
+other = "Order"
+
+["admin.recipes"]
+other = "recipes"
+
+["admin.slug"]
+other = "Short name"
+
+["admin.title"]
+other = "Categories"
+
+["common.close"]
+other = "Close"
+
+["common.loading"]
+other = "Loading"
+
+["common.more"]
+other = "More actions"
+
+["common.save"]
+other = "Save"
+
+["common.skip_to_content"]
+other = "Skip to content"
+
+["cook.back"]
+other = "Back"
+
+["cook.did_you_cook"]
+other = "Did you cook it?"
+
+["cook.dismiss"]
+other = "Dismiss"
+
+["cook.done"]
+other = "Done"
+
+["cook.finish"]
+other = "Finish"
+
+["cook.ingredients"]
+other = "Ingredients"
+
+["cook.next"]
+other = "Next"
+
+["cook.no_steps"]
+other = "This recipe has no steps yet."
+
+["cook.not_now"]
+other = "Not now"
+
+["cook.stage_next"]
+other = "Next stage"
+
+["cook.stage_of"]
+other = "Stage {{.N}} of {{.Total}}"
+
+["cook.stage_prev"]
+other = "Previous stage"
+
+["cook.start_stage_timer"]
+other = "Start {{.Duration}}"
+
+["cook.start_timer"]
+other = "Start timer {{.Duration}}"
+
+["cook.step_of"]
+other = "Step {{.N}} of {{.Total}}"
+
+["cook.step_timer_label"]
+other = "Step {{.N}}"
+
+["cook.tick_hint"]
+other = "Tap an ingredient to tick it off."
+
+["cook.wake_hint"]
+other = "Keep the screen on in your phone settings."
+
+["cook.yes"]
+other = "Yes"
+
+["delete.body"]
+other = "This can’t be undone. Photos will be deleted too."
+
+["delete.confirm"]
+other = "Delete forever"
+
+["delete.family"]
+other = "The whole family will lose this recipe too."
+
+["delete.keep"]
+other = "Keep it"
+
+["delete.title"]
+other = "Delete “{{.Title}}” forever?"
+
+["editor.accessories"]
+other = "Accessories"
+
+["editor.add_photo"]
+other = "Add photo"
+
+["editor.add_stage"]
+other = "Add another stage"
+
+["editor.categories"]
+other = "Categories"
+
+["editor.categories_max"]
+other = "You can choose up to 5 categories."
+
+["editor.conflict"]
+other = "Someone changed this recipe while you were editing. What you typed is kept on this device."
+
+["editor.conflict_open"]
+other = "Open the current version"
+
+["editor.core_temp"]
+other = "Core temperature"
+
+["editor.cover"]
+other = "Cover"
+
+["editor.description"]
+other = "Description"
+
+["editor.draft_continue_btn"]
+other = "Continue"
+
+["editor.draft_discard"]
+other = "Discard"
+
+["editor.edit.title"]
+other = "Edit recipe"
+
+["editor.fix_these"]
+other = "Please check these fields:"
+
+["editor.h"]
+other = "h"
+
+["editor.hours"]
+other = "Hours"
+
+["editor.inbox.title"]
+other = "Edit, then keep"
+
+["editor.ingredients"]
+other = "Ingredients"
+
+["editor.ingredients_help"]
+other = "One ingredient per line. Start a line with # for a heading. You can paste a whole list."
+
+["editor.ingredients_ph"]
+other = "# Dough\n500 g flour\n2 tbsp olive oil\n1½ tsp salt"
+
+["editor.language"]
+other = "Recipe language"
+
+["editor.language_auto"]
+other = "Automatic"
+
+["editor.m"]
+other = "min"
+
+["editor.make_cover"]
+other = "Make cover photo"
+
+["editor.minutes"]
+other = "Minutes"
+
+["editor.mode"]
+other = "Oven function"
+
+["editor.mode_choose"]
+other = "Choose…"
+
+["editor.more"]
+other = "More details"
+
+["editor.name"]
+other = "Name"
+
+["editor.name_ph"]
+other = "e.g. Smoked brisket"
+
+["editor.new.title"]
+other = "New recipe"
+
+["editor.notes"]
+other = "Notes"
+
+["editor.offline"]
+other = "Not saved yet — no connection. We’ll keep it here."
+
+["editor.oven_settings"]
+other = "Oven settings"
+
+["editor.pellet_blend"]
+other = "Pellet blend"
+
+["editor.pellet_note"]
+other = "Pellets"
+
+["editor.pellet_note_ph"]
+other = "e.g. hickory"
+
+["editor.photo_delete"]
+other = "Remove photo"
+
+["editor.photo_earlier"]
+other = "Move earlier"
+
+["editor.photo_later"]
+other = "Move later"
+
+["editor.photos"]
+other = "Photos"
+
+["editor.photos_not_in_draft"]
+other = "Photos aren’t part of the saved draft."
+
+["editor.preheat_minutes"]
+other = "Preheat (minutes)"
+
+["editor.prep_minutes"]
+other = "Preparation (minutes)"
+
+["editor.preset"]
+other = "Pizza preset"
+
+["editor.s"]
+other = "s"
+
+["editor.save"]
+other = "Save"
+
+["editor.save_and_keep"]
+other = "Save and keep"
+
+["editor.seconds"]
+other = "Seconds"
+
+["editor.servings"]
+other = "Servings"
+
+["editor.share_hint"]
+other = "Only you can see a new recipe until you share it."
+
+["editor.source_name"]
+other = "Source name"
+
+["editor.source_url"]
+other = "Source link"
+
+["editor.stage"]
+other = "Stage"
+
+["editor.stage_down"]
+other = "Move stage down"
+
+["editor.stage_notes"]
+other = "Notes for this stage"
+
+["editor.stage_notes_ph"]
+other = "e.g. turn halfway"
+
+["editor.stage_remove"]
+other = "Remove stage"
+
+["editor.stage_up"]
+other = "Move stage up"
+
+["editor.steps"]
+other = "Steps"
+
+["editor.steps_help"]
+other = "One step per line. Add [10:00] at the end of a step to get a timer button."
+
+["editor.steps_ph"]
+other = "Mix the dough\nLet it rest [30:00]\nBake"
+
+["editor.tags"]
+other = "Keywords"
+
+["editor.tags_help"]
+other = "Optional. Helps you find the recipe later."
+
+["editor.tags_ph"]
+other = "Type a keyword and press Enter"
+
+["editor.temperature"]
+other = "Temperature"
+
+["editor.time"]
+other = "Time"
+
+["editor.title_edit"]
+other = "Edit recipe"
+
+["editor.title_inbox"]
+other = "Edit, then keep"
+
+["editor.title_new"]
+other = "New recipe"
+
+["editor.try_again"]
+other = "Try again"
+
+["editor.woodfire"]
+other = "Woodfire flavour"
+
+["error.bad_request.body"]
+other = "Something in the request wasn’t right. Go back and try again."
+
+["error.bad_request.title"]
+other = "That didn’t work"
+
+["error.busy.body"]
+other = "The kitchen is busy. Try again in a moment."
+
+["error.busy.title"]
+other = "Busy right now"
+
+["error.conflict.body"]
+other = "Someone changed this recipe while you were editing. Open the current version and try again."
+
+["error.conflict.title"]
+other = "Changed by someone else"
+
+["error.forbidden.body"]
+other = "You can’t do that with this recipe."
+
+["error.forbidden.title"]
+other = "Not allowed"
+
+["error.go_back"]
+other = "Go back"
+
+["error.internal.body"]
+other = "Something went wrong. Try again."
+
+["error.internal.title"]
+other = "Something went wrong"
+
+["error.not_allowed.body"]
+other = "You can’t get in yet. Ask Lior to add you."
+
+["error.not_allowed.title"]
+other = "You can’t get in yet"
+
+["error.not_found.body"]
+other = "We couldn’t find that recipe. It may have been deleted."
+
+["error.not_found.title"]
+other = "Not found"
+
+["error.request_id"]
+other = "Reference:"
+
+["error.signin_expired.body"]
+other = "The sign-in took too long. Please start again."
+
+["error.signin_expired.title"]
+other = "Sign-in took too long"
+
+["error.signin_failed.body"]
+other = "We couldn’t sign you in. Please try again."
+
+["error.signin_failed.title"]
+other = "Sign-in didn’t work"
+
+["error.too_large.body"]
+other = "That file is too big. Try a smaller photo."
+
+["error.too_large.title"]
+other = "File too big"
+
+["error.try_again"]
+other = "Try again"
+
+["error.try_another"]
+other = "Try another account"
+
+["error.unavailable.body"]
+other = "Sign-in is temporarily unavailable. Try again in a minute."
+
+["error.unavailable.title"]
+other = "Sign-in unavailable"
+
+["error.unsupported_media.body"]
+other = "Please use a JPEG, PNG or WebP photo. On Samsung phones, turn off HEIC in the camera settings."
+
+["error.unsupported_media.title"]
+other = "Photo type not supported"
+
+["home.categories"]
+other = "Categories"
+
+["home.empty"]
+other = "Your recipes will show up here once you add or open some."
+
+["home.favourites"]
+other = "Favourites"
+
+["home.recent"]
+other = "Recently cooked or viewed"
+
+["home.see_all"]
+other = "See all"
+
+["home.smoked"]
+other = "Smoked"
+
+["home.title"]
+other = "Home"
+
+["inbox.edit_keep"]
+other = "Edit, then keep"
+
+["inbox.empty"]
+other = "All done!"
+
+["inbox.found_by"]
+other = "Found by your assistant"
+
+["inbox.keep"]
+other = "Keep"
+
+["inbox.keep_looking"]
+other = "Keep looking"
+
+["inbox.lead"]
+other = "Recipes your assistant found for you. Keep the ones you like."
+
+["inbox.missing_oven"]
+other = "Oven settings missing — add them before cooking"
+
+["inbox.share_too"]
+other = "Share with family too"
+
+["inbox.throw_away"]
+other = "Throw away"
+
+["inbox.throw_title"]
+other = "Throw away this suggestion?"
+
+["inbox.title"]
+other = "New recipes to review"
+
+["js.cook.stage_n"]
+other = "Stage {n}"
+
+["js.cook.stage_of"]
+other = "Stage {n} of {total}"
+
+["js.cook.step_of"]
+other = "Step {n} of {total}"
+
+["js.copied"]
+other = "Copied"
+
+["js.draft.changed_since"]
+other = "This recipe was changed since — check before saving."
+
+["js.draft.continue"]
+other = "Continue your unsaved recipe?"
+
+["js.error.generic"]
+other = "Something went wrong. Try again."
+
+["js.hint.recommended"]
+other = "Usual range: {range}"
+
+["js.hint.smoker_woodfire"]
+other = "The Smoker always uses woodfire."
+
+["js.offline"]
+other = "No connection. Try again when you’re back online."
+
+["js.phase1"]
+other = "Stage 1"
+
+["js.photo.cover"]
+other = "Cover"
+
+["js.photo.delete"]
+other = "Remove photo"
+
+["js.photo.delete_failed"]
+other = "Couldn’t remove the photo."
+
+["js.photo.earlier"]
+other = "Move earlier"
+
+["js.photo.failed"]
+other = "Photo didn’t upload — try again"
+
+["js.photo.failed_after_save"]
+other = "Recipe saved, but a photo didn’t upload. Add it again here."
+
+["js.photo.heic"]
+other = "This photo type isn’t supported. Use JPEG, PNG or WebP (on Samsung: camera settings, turn off HEIC)."
+
+["js.photo.later"]
+other = "Move later"
+
+["js.photo.make_cover"]
+other = "Make cover photo"
+
+["js.photo.order_failed"]
+other = "Couldn’t save the new photo order."
+
+["js.photo.retry"]
+other = "Try again"
+
+["js.photo.uploading"]
+other = "Uploading photos…"
+
+["js.saving"]
+other = "Saving…"
+
+["js.share.copied"]
+other = "Link copied"
+
+["js.share.failed"]
+other = "Couldn’t copy. Please copy it by hand."
+
+["js.tag.remove"]
+other = "Remove {name}"
+
+["js.theme.auto"]
+other = "Automatic"
+
+["js.theme.dark"]
+other = "Dark"
+
+["js.theme.light"]
+other = "Light"
+
+["js.timer.end"]
+other = "{label}: time’s up!"
+
+["js.timer.pre"]
+other = "{label}: 5 minutes left"
+
+["js.timer.stop"]
+other = "Stop"
+
+["js.unit.g"]
+other = "g"
+
+["js.unit.h"]
+other = "h"
+
+["js.unit.kg"]
+other = "kg"
+
+["js.unit.l"]
+other = "l"
+
+["js.unit.min"]
+other = "min"
+
+["js.unit.ml"]
+other = "ml"
+
+["js.unit.pcs"]
+other = "pcs"
+
+["js.unit.pinch"]
+other = "pinch"
+
+["js.unit.s"]
+other = "s"
+
+["js.unit.tbsp"]
+other = "tbsp"
+
+["js.unit.tsp"]
+other = "tsp"
+
+["js.wake.hint"]
+other = "Keep the screen on in your phone settings so it doesn’t go dark while cooking."
+
+["js.warn.unusual_temp"]
+other = "Unusual for {mode} ({range})"
+
+["js.warn.unusual_time"]
+other = "Unusual for {mode} ({range})"
+
+["list.categories"]
+other = "Categories"
+
+["list.clear"]
+other = "Clear filters"
+
+["list.clear_search"]
+other = "Clear search"
+
+["list.empty"]
+other = "No recipes yet. Add your first one!"
+
+["list.empty_filters"]
+other = "No recipes match these filters."
+
+["list.empty_for"]
+other = "No recipes found for “{{.Q}}”."
+
+["list.filter.favourites"]
+other = "Favourites"
+
+["list.filter.max_time"]
+other = "Up to {{.Minutes}} min"
+
+["list.filter.smoked"]
+other = "Smoked"
+
+["list.filters"]
+other = "Filters"
+
+["list.more_filters"]
+other = "Show only"
+
+["list.oven_mode"]
+other = "Oven mode"
+
+["list.remove_filter"]
+other = "Remove filter {{.Label}}"
+
+["list.scope"]
+other = "Whose recipes"
+
+["list.scope.family"]
+other = "Family"
+
+["list.scope.mine"]
+other = "Just me"
+
+["list.scope_all"]
+other = "All"
+
+["list.scope_family"]
+other = "Family"
+
+["list.scope_mine"]
+other = "Just me"
+
+["list.show_more"]
+other = "Show more"
+
+["list.sort"]
+other = "Sort by"
+
+["list.sort_cooked"]
+other = "Most cooked"
+
+["list.sort_rating"]
+other = "Best rated"
+
+["list.sort_recent"]
+other = "Recently cooked or viewed"
+
+["list.sort_relevance"]
+other = "Best match"
+
+["list.sort_title"]
+other = "Name"
+
+["list.sort_updated"]
+other = "Recently changed"
+
+["list.title"]
+other = "Recipes"
+
+["nav.add"]
+other = "Add"
+
+["nav.add_recipe"]
+other = "Add recipe"
+
+["nav.categories"]
+other = "Categories"
+
+["nav.home"]
+other = "Home"
+
+["nav.inbox"]
+other = "New recipes"
+
+["nav.inbox_count"]
+one = "New recipes to review ({{.Count}})"
+other = "New recipes to review ({{.Count}})"
+
+["nav.main"]
+other = "Main navigation"
+
+["nav.menu"]
+other = "Menu"
+
+["nav.search"]
+other = "Search"
+
+["nav.settings"]
+other = "Settings"
+
+["nav.sign_out"]
+other = "Sign out"
+
+["nav.theme"]
+other = "Theme"
+
+["nav.tokens"]
+other = "Assistant access"
+
+["recipe.add_oven"]
+other = "Add oven settings"
+
+["recipe.by"]
+other = "by {{.Name}}"
+
+["recipe.categories"]
+other = "Categories"
+
+["recipe.cooked_last"]
+other = "last on {{.Date}}"
+
+["recipe.cooked_never"]
+other = "Not cooked yet."
+
+["recipe.cooked_times"]
+one = "Cooked {{.Count}} time"
+other = "Cooked {{.Count}} times"
+
+["recipe.cooked_title"]
+other = "Cooking diary"
+
+["recipe.cooked_today"]
+other = "Cooked it today"
+
+["recipe.copy"]
+other = "Copy to my recipes"
+
+["recipe.delete"]
+other = "Delete forever"
+
+["recipe.edit"]
+other = "Edit"
+
+["recipe.family"]
+other = "Family"
+
+["recipe.favourite"]
+other = "Add to favourites"
+
+["recipe.favourites"]
+other = "Favourites"
+
+["recipe.found_on"]
+other = "Found on:"
+
+["recipe.hero.accessories"]
+other = "Use"
+
+["recipe.hero.core_temp"]
+other = "Core temperature"
+
+["recipe.hero.frame_broil"]
+other = "Frame on the top level"
+
+["recipe.hero.ignition"]
+other = "Pellets ignite for ≈ 3–4 min before cooking starts"
+
+["recipe.hero.none"]
+other = "No oven settings yet"
+
+["recipe.hero.oil_warning"]
+other = "Above 260 °C: no butter or olive oil"
+
+["recipe.hero.phase1"]
+other = "Stage 1"
+
+["recipe.hero.phase2"]
+other = "Stage 2"
+
+["recipe.hero.prealert"]
+other = "You’ll get a reminder 5 minutes before the end"
+
+["recipe.hero.preheat"]
+other = "Preheat first"
+
+["recipe.hero.preheat_min"]
+other = "Preheat first (≈ {{.Min}} min)"
+
+["recipe.hero.woodfire_on"]
+other = "Woodfire ON"
+
+["recipe.ingredients"]
+other = "Ingredients"
+
+["recipe.just_me"]
+other = "Just me"
+
+["recipe.last_changed"]
+other = "Last changed {{.Date}} by {{.Name}}"
+
+["recipe.log_delete"]
+other = "Delete this note"
+
+["recipe.log_note"]
+other = "Note (optional)"
+
+["recipe.log_note_ph"]
+other = "Next time less salt…"
+
+["recipe.log_photo"]
+other = "Photo (optional)"
+
+["recipe.log_photo_failed"]
+other = "Saved, but the photo didn’t upload."
+
+["recipe.log_rating"]
+other = "Rating (optional)"
+
+["recipe.no_ingredients"]
+other = "No ingredients yet."
+
+["recipe.no_steps"]
+other = "No steps yet."
+
+["recipe.notes"]
+other = "Notes"
+
+["recipe.our_notes"]
+other = "Our notes"
+
+["recipe.oven_settings"]
+other = "Oven settings"
+
+["recipe.photos"]
+other = "Photos"
+
+["recipe.prep_time"]
+other = "Preparation: {{.Min}} min"
+
+["recipe.servings"]
+other = "Servings"
+
+["recipe.servings_less"]
+other = "Fewer servings"
+
+["recipe.servings_more"]
+other = "More servings"
+
+["recipe.share_family"]
+other = "Share with family"
+
+["recipe.share_link"]
+other = "Share link"
+
+["recipe.share_off"]
+other = "The family won’t see this recipe any more."
+
+["recipe.share_on"]
+other = "Everyone in the family will see this recipe."
+
+["recipe.shared_by"]
+other = "from {{.Name}}"
+
+["recipe.stars"]
+one = "{{.Count}} star"
+other = "{{.Count}} stars"
+
+["recipe.start_cooking"]
+other = "Start cooking"
+
+["recipe.steps"]
+other = "Steps"
+
+["recipe.tags"]
+other = "Keywords"
+
+["recipe.unfavourite"]
+other = "Remove from favourites"
+
+["recipe.woodfire"]
+other = "Woodfire"
+
+["search.go"]
+other = "Search"
+
+["search.label"]
+other = "Search recipes"
+
+["search.placeholder"]
+other = "Search recipes"
+
+["settings.assistant"]
+other = "Assistant access"
+
+["settings.title"]
+other = "Settings"
+
+["settings.version"]
+other = "App version"
+
+["signin.button"]
+other = "Sign in"
+
+["signin.forgot"]
+other = "Forgot your password? Ask Lior."
+
+["signin.signed_out"]
+other = "Signed out"
+
+["signin.title"]
+other = "Sign in"
+
+["tokens.actions"]
+other = "Actions"
+
+["tokens.copy"]
+other = "Copy"
+
+["tokens.create"]
+other = "Create key"
+
+["tokens.created"]
+other = "Your new access key"
+
+["tokens.days"]
+one = "{{.Count}} day"
+other = "{{.Count}} days"
+
+["tokens.existing"]
+other = "Your keys"
+
+["tokens.expires"]
+other = "expires"
+
+["tokens.expiry"]
+other = "Valid for"
+
+["tokens.key"]
+other = "Access key"
+
+["tokens.last_used"]
+other = "Last used"
+
+["tokens.lead"]
+other = "Give your assistant a key so it can send you recipe suggestions. Keys never let it change or delete your recipes."
+
+["tokens.name"]
+other = "Name"
+
+["tokens.name_label"]
+other = "What is it for?"
+
+["tokens.name_ph"]
+other = "e.g. My assistant"
+
+["tokens.never"]
+other = "Never"
+
+["tokens.never_expires"]
+other = "Doesn’t expire"
+
+["tokens.new"]
+other = "Create an access key"
+
+["tokens.none"]
+other = "No access keys yet."
+
+["tokens.once"]
+other = "You won’t see this again. Copy it now."
+
+["tokens.revoke"]
+other = "Switch off"
+
+["tokens.scope.inbox:write"]
+other = "Send recipes"
+
+["tokens.scope.recipes:read"]
+other = "Read recipes"
+
+["tokens.scope_help.inbox:write"]
+other = "Adds suggestions to “New recipes to review”. Nothing is saved until you keep it."
+
+["tokens.scope_help.recipes:read"]
+other = "Lets it look up recipes you can see, for example to avoid duplicates."
+
+["tokens.scopes"]
+other = "Can do"
+
+["tokens.scopes_label"]
+other = "What can it do?"
+
+["tokens.status"]
+other = "Status"
+
+["tokens.status.active"]
+other = "Active"
+
+["tokens.status.expired"]
+other = "Expired"
+
+["tokens.status.revoked"]
+other = "Switched off"
+
+["tokens.title"]
+other = "Assistant access"

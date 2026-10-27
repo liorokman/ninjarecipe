@@ -1,0 +1,1046 @@
+# UI copy (he). Owned by the UI package; keys follow docs/implementation-plan.md D14/D15.
+
+["admin.add"]
+other = "הוספת קטגוריה"
+
+["admin.delete"]
+other = "מחיקה"
+
+["admin.delete_body"]
+one = "מתכון אחד משתמש בה. המתכון נשאר, רק הקטגוריה תוסר."
+two = "שני מתכונים משתמשים בה. המתכונים נשארים, רק הקטגוריה תוסר."
+many = "{{.Count}} מתכונים משתמשים בה. המתכונים נשארים, רק הקטגוריה תוסר."
+other = "{{.Count}} מתכונים משתמשים בה. המתכונים נשארים, רק הקטגוריה תוסר."
+
+["admin.delete_title"]
+other = "למחוק את הקטגוריה „{{.Name}}”?"
+
+["admin.icon"]
+other = "סמל"
+
+["admin.name_en"]
+other = "שם באנגלית"
+
+["admin.name_he"]
+other = "שם בעברית"
+
+["admin.order"]
+other = "סדר"
+
+["admin.recipes"]
+other = "מתכונים"
+
+["admin.slug"]
+other = "שם קצר"
+
+["admin.title"]
+other = "קטגוריות"
+
+["common.close"]
+other = "סגירה"
+
+["common.loading"]
+other = "טוען"
+
+["common.more"]
+other = "עוד פעולות"
+
+["common.save"]
+other = "שמירה"
+
+["common.skip_to_content"]
+other = "דילוג לתוכן"
+
+["cook.back"]
+other = "חזרה"
+
+["cook.did_you_cook"]
+other = "בישלתם את זה?"
+
+["cook.dismiss"]
+other = "סגירה"
+
+["cook.done"]
+other = "סיום"
+
+["cook.finish"]
+other = "סיימתי"
+
+["cook.ingredients"]
+other = "מצרכים"
+
+["cook.next"]
+other = "הבא"
+
+["cook.no_steps"]
+other = "במתכון הזה עדיין אין שלבים."
+
+["cook.not_now"]
+other = "לא עכשיו"
+
+["cook.stage_next"]
+other = "שלב התנור הבא"
+
+["cook.stage_of"]
+other = "שלב תנור {{.N}} מתוך {{.Total}}"
+
+["cook.stage_prev"]
+other = "שלב התנור הקודם"
+
+["cook.start_stage_timer"]
+other = "התחלת טיימר: {{.Duration}}"
+
+["cook.start_timer"]
+other = "התחלת טיימר {{.Duration}}"
+
+["cook.step_of"]
+other = "שלב {{.N}} מתוך {{.Total}}"
+
+["cook.step_timer_label"]
+other = "שלב {{.N}}"
+
+["cook.tick_hint"]
+other = "לחצו על מצרך כדי לסמן אותו."
+
+["cook.wake_hint"]
+other = "השאירו את המסך דלוק בהגדרות הטלפון."
+
+["cook.yes"]
+other = "כן"
+
+["delete.body"]
+other = "אי אפשר לבטל. גם התמונות יימחקו."
+
+["delete.confirm"]
+other = "מחיקה לתמיד"
+
+["delete.family"]
+other = "כל המשפחה תאבד את המתכון הזה."
+
+["delete.keep"]
+other = "להשאיר"
+
+["delete.title"]
+other = "למחוק את „{{.Title}}” לתמיד?"
+
+["editor.accessories"]
+other = "אביזרים"
+
+["editor.add_photo"]
+other = "הוספת תמונה"
+
+["editor.add_stage"]
+other = "הוספת שלב נוסף"
+
+["editor.categories"]
+other = "קטגוריות"
+
+["editor.categories_max"]
+other = "אפשר לבחור עד 5 קטגוריות."
+
+["editor.conflict"]
+other = "מישהו שינה את המתכון בזמן שערכתם. מה שהקלדתם נשמר במכשיר הזה."
+
+["editor.conflict_open"]
+other = "פתיחת הגרסה הנוכחית"
+
+["editor.core_temp"]
+other = "טמפרטורת ליבה"
+
+["editor.cover"]
+other = "תמונה ראשית"
+
+["editor.description"]
+other = "תיאור"
+
+["editor.draft_continue_btn"]
+other = "להמשיך"
+
+["editor.draft_discard"]
+other = "למחוק"
+
+["editor.edit.title"]
+other = "עריכת מתכון"
+
+["editor.fix_these"]
+other = "כדאי לבדוק את השדות האלה:"
+
+["editor.h"]
+other = "שע׳"
+
+["editor.hours"]
+other = "שעות"
+
+["editor.inbox.title"]
+other = "עריכה ושמירה"
+
+["editor.ingredients"]
+other = "מצרכים"
+
+["editor.ingredients_help"]
+other = "מצרך אחד בכל שורה. שורה שמתחילה ב-# היא כותרת. אפשר להדביק רשימה שלמה."
+
+["editor.ingredients_ph"]
+other = "# בצק\n500 גרם קמח\n2 כפות שמן זית\n1½ כפית מלח"
+
+["editor.language"]
+other = "שפת המתכון"
+
+["editor.language_auto"]
+other = "אוטומטי"
+
+["editor.m"]
+other = "דק׳"
+
+["editor.make_cover"]
+other = "קביעה כתמונה ראשית"
+
+["editor.minutes"]
+other = "דקות"
+
+["editor.mode"]
+other = "תוכנית בתנור"
+
+["editor.mode_choose"]
+other = "בחירה…"
+
+["editor.more"]
+other = "עוד פרטים"
+
+["editor.name"]
+other = "שם"
+
+["editor.name_ph"]
+other = "למשל: בריסקט מעושן"
+
+["editor.new.title"]
+other = "מתכון חדש"
+
+["editor.notes"]
+other = "הערות"
+
+["editor.offline"]
+other = "עדיין לא נשמר — אין חיבור. נשמור את זה כאן."
+
+["editor.oven_settings"]
+other = "הגדרות התנור"
+
+["editor.pellet_blend"]
+other = "תערובת פלטים"
+
+["editor.pellet_note"]
+other = "פלטים"
+
+["editor.pellet_note_ph"]
+other = "למשל: היקורי"
+
+["editor.photo_delete"]
+other = "הסרת התמונה"
+
+["editor.photo_earlier"]
+other = "הזזה קדימה"
+
+["editor.photo_later"]
+other = "הזזה אחורה"
+
+["editor.photos"]
+other = "תמונות"
+
+["editor.photos_not_in_draft"]
+other = "תמונות לא נשמרות בטיוטה."
+
+["editor.preheat_minutes"]
+other = "חימום מוקדם (דקות)"
+
+["editor.prep_minutes"]
+other = "הכנה (דקות)"
+
+["editor.preset"]
+other = "סוג פיצה"
+
+["editor.s"]
+other = "שנ׳"
+
+["editor.save"]
+other = "שמירה"
+
+["editor.save_and_keep"]
+other = "שמירה והשארה"
+
+["editor.seconds"]
+other = "שניות"
+
+["editor.servings"]
+other = "מנות"
+
+["editor.share_hint"]
+other = "רק אתם רואים מתכון חדש עד שתשתפו אותו."
+
+["editor.source_name"]
+other = "שם המקור"
+
+["editor.source_url"]
+other = "קישור למקור"
+
+["editor.stage"]
+other = "שלב"
+
+["editor.stage_down"]
+other = "הזזת שלב למטה"
+
+["editor.stage_notes"]
+other = "הערות לשלב הזה"
+
+["editor.stage_notes_ph"]
+other = "למשל: להפוך באמצע"
+
+["editor.stage_remove"]
+other = "הסרת שלב"
+
+["editor.stage_up"]
+other = "הזזת שלב למעלה"
+
+["editor.steps"]
+other = "שלבים"
+
+["editor.steps_help"]
+other = "שלב אחד בכל שורה. הוסיפו [10:00] בסוף שלב כדי לקבל כפתור טיימר."
+
+["editor.steps_ph"]
+other = "לערבב את הבצק\nלתת לנוח [30:00]\nלאפות"
+
+["editor.tags"]
+other = "מילות מפתח"
+
+["editor.tags_help"]
+other = "לא חובה. עוזר למצוא את המתכון אחר כך."
+
+["editor.tags_ph"]
+other = "כתבו מילה ולחצו Enter"
+
+["editor.temperature"]
+other = "טמפרטורה"
+
+["editor.time"]
+other = "זמן"
+
+["editor.title_edit"]
+other = "עריכת מתכון"
+
+["editor.title_inbox"]
+other = "עריכה ושמירה"
+
+["editor.title_new"]
+other = "מתכון חדש"
+
+["editor.try_again"]
+other = "נסו שוב"
+
+["editor.woodfire"]
+other = "טעם אש עצים"
+
+["error.bad_request.body"]
+other = "משהו בבקשה לא היה תקין. חזרו אחורה ונסו שוב."
+
+["error.bad_request.title"]
+other = "זה לא עבד"
+
+["error.busy.body"]
+other = "המטבח עמוס. נסו שוב בעוד רגע."
+
+["error.busy.title"]
+other = "עמוס כרגע"
+
+["error.conflict.body"]
+other = "מישהו שינה את המתכון בזמן שערכתם. פתחו את הגרסה הנוכחית ונסו שוב."
+
+["error.conflict.title"]
+other = "שונה על ידי מישהו אחר"
+
+["error.forbidden.body"]
+other = "אי אפשר לעשות את זה עם המתכון הזה."
+
+["error.forbidden.title"]
+other = "אין הרשאה"
+
+["error.go_back"]
+other = "חזרה"
+
+["error.internal.body"]
+other = "משהו השתבש. נסו שוב."
+
+["error.internal.title"]
+other = "משהו השתבש"
+
+["error.not_allowed.body"]
+other = "עדיין אי אפשר להיכנס. בקשו מליאור להוסיף אתכם."
+
+["error.not_allowed.title"]
+other = "עדיין אי אפשר להיכנס"
+
+["error.not_found.body"]
+other = "לא מצאנו את המתכון הזה. ייתכן שנמחק."
+
+["error.not_found.title"]
+other = "לא נמצא"
+
+["error.request_id"]
+other = "מספר אסמכתא:"
+
+["error.signin_expired.body"]
+other = "ההתחברות לקחה יותר מדי זמן. התחילו מחדש."
+
+["error.signin_expired.title"]
+other = "ההתחברות לקחה יותר מדי זמן"
+
+["error.signin_failed.body"]
+other = "לא הצלחנו להתחבר. נסו שוב."
+
+["error.signin_failed.title"]
+other = "ההתחברות לא הצליחה"
+
+["error.too_large.body"]
+other = "הקובץ גדול מדי. נסו תמונה קטנה יותר."
+
+["error.too_large.title"]
+other = "הקובץ גדול מדי"
+
+["error.try_again"]
+other = "נסו שוב"
+
+["error.try_another"]
+other = "לנסות חשבון אחר"
+
+["error.unavailable.body"]
+other = "ההתחברות לא זמינה כרגע. נסו שוב בעוד דקה."
+
+["error.unavailable.title"]
+other = "ההתחברות לא זמינה"
+
+["error.unsupported_media.body"]
+other = "השתמשו בתמונת JPEG, PNG או WebP. בטלפוני סמסונג כבו את HEIC בהגדרות המצלמה."
+
+["error.unsupported_media.title"]
+other = "סוג התמונה לא נתמך"
+
+["home.categories"]
+other = "קטגוריות"
+
+["home.empty"]
+other = "המתכונים שלכם יופיעו כאן אחרי שתוסיפו או תפתחו כמה."
+
+["home.favourites"]
+other = "מועדפים"
+
+["home.recent"]
+other = "בושלו או נצפו לאחרונה"
+
+["home.see_all"]
+other = "הכול"
+
+["home.smoked"]
+other = "מעושן"
+
+["home.title"]
+other = "בית"
+
+["inbox.edit_keep"]
+other = "לערוך ואז לשמור"
+
+["inbox.empty"]
+other = "סיימנו!"
+
+["inbox.found_by"]
+other = "נמצא על ידי העוזר שלכם"
+
+["inbox.keep"]
+other = "לשמור"
+
+["inbox.keep_looking"]
+other = "להמשיך לעיין"
+
+["inbox.lead"]
+other = "מתכונים שהעוזר שלכם מצא. שמרו את אלה שאהבתם."
+
+["inbox.missing_oven"]
+other = "חסרות הגדרות תנור — הוסיפו אותן לפני הבישול"
+
+["inbox.share_too"]
+other = "לשתף גם עם המשפחה"
+
+["inbox.throw_away"]
+other = "לזרוק"
+
+["inbox.throw_title"]
+other = "לזרוק את ההצעה הזאת?"
+
+["inbox.title"]
+other = "מתכונים חדשים לבדיקה"
+
+["js.cook.stage_n"]
+other = "שלב תנור {n}"
+
+["js.cook.stage_of"]
+other = "שלב תנור {n} מתוך {total}"
+
+["js.cook.step_of"]
+other = "שלב {n} מתוך {total}"
+
+["js.copied"]
+other = "הועתק"
+
+["js.draft.changed_since"]
+other = "המתכון הזה השתנה בינתיים — בדקו לפני השמירה."
+
+["js.draft.continue"]
+other = "להמשיך את המתכון שלא נשמר?"
+
+["js.error.generic"]
+other = "משהו השתבש. נסו שוב."
+
+["js.hint.recommended"]
+other = "טווח מקובל: {range}"
+
+["js.hint.smoker_woodfire"]
+other = "בעישון תמיד פועלת אש עצים."
+
+["js.offline"]
+other = "אין חיבור. נסו שוב כשיחזור."
+
+["js.phase1"]
+other = "שלב 1"
+
+["js.photo.cover"]
+other = "תמונה ראשית"
+
+["js.photo.delete"]
+other = "הסרת התמונה"
+
+["js.photo.delete_failed"]
+other = "לא הצלחנו להסיר את התמונה."
+
+["js.photo.earlier"]
+other = "הזזה קדימה"
+
+["js.photo.failed"]
+other = "התמונה לא עלתה — נסו שוב"
+
+["js.photo.failed_after_save"]
+other = "המתכון נשמר, אבל תמונה לא עלתה. הוסיפו אותה שוב כאן."
+
+["js.photo.heic"]
+other = "סוג התמונה הזה לא נתמך. השתמשו ב-JPEG, PNG או WebP (בסמסונג: הגדרות מצלמה, לכבות HEIC)."
+
+["js.photo.later"]
+other = "הזזה אחורה"
+
+["js.photo.make_cover"]
+other = "קביעה כתמונה ראשית"
+
+["js.photo.order_failed"]
+other = "לא הצלחנו לשמור את סדר התמונות."
+
+["js.photo.retry"]
+other = "נסו שוב"
+
+["js.photo.uploading"]
+other = "מעלה תמונות…"
+
+["js.saving"]
+other = "שומר…"
+
+["js.share.copied"]
+other = "הקישור הועתק"
+
+["js.share.failed"]
+other = "לא הצלחנו להעתיק. העתיקו ידנית."
+
+["js.tag.remove"]
+other = "הסרת {name}"
+
+["js.theme.auto"]
+other = "אוטומטי"
+
+["js.theme.dark"]
+other = "כהה"
+
+["js.theme.light"]
+other = "בהיר"
+
+["js.timer.end"]
+other = "{label}: הזמן נגמר!"
+
+["js.timer.pre"]
+other = "{label}: נשארו 5 דקות"
+
+["js.timer.stop"]
+other = "עצירה"
+
+["js.unit.g"]
+other = "גרם"
+
+["js.unit.h"]
+other = "שע׳"
+
+["js.unit.kg"]
+other = "ק\"ג"
+
+["js.unit.l"]
+other = "ליטר"
+
+["js.unit.min"]
+other = "דק׳"
+
+["js.unit.ml"]
+other = "מ\"ל"
+
+["js.unit.pcs"]
+other = "יח'"
+
+["js.unit.pinch"]
+other = "קורט"
+
+["js.unit.s"]
+other = "שנ׳"
+
+["js.unit.tbsp"]
+other = "כף"
+
+["js.unit.tsp"]
+other = "כפית"
+
+["js.wake.hint"]
+other = "השאירו את המסך דלוק בהגדרות הטלפון כדי שלא יכבה בזמן הבישול."
+
+["js.warn.unusual_temp"]
+other = "חריג עבור {mode} ({range})"
+
+["js.warn.unusual_time"]
+other = "חריג עבור {mode} ({range})"
+
+["list.categories"]
+other = "קטגוריות"
+
+["list.clear"]
+other = "ניקוי סינון"
+
+["list.clear_search"]
+other = "ניקוי החיפוש"
+
+["list.empty"]
+other = "עדיין אין מתכונים. הוסיפו את הראשון!"
+
+["list.empty_filters"]
+other = "אין מתכונים שמתאימים לסינון."
+
+["list.empty_for"]
+other = "לא נמצאו מתכונים עבור „{{.Q}}”."
+
+["list.filter.favourites"]
+other = "מועדפים"
+
+["list.filter.max_time"]
+other = "עד {{.Minutes}} דקות"
+
+["list.filter.smoked"]
+other = "מעושן"
+
+["list.filters"]
+other = "סינון"
+
+["list.more_filters"]
+other = "להציג רק"
+
+["list.oven_mode"]
+other = "תוכנית בתנור"
+
+["list.remove_filter"]
+other = "הסרת הסינון {{.Label}}"
+
+["list.scope"]
+other = "של מי"
+
+["list.scope.family"]
+other = "משפחה"
+
+["list.scope.mine"]
+other = "רק אני"
+
+["list.scope_all"]
+other = "הכול"
+
+["list.scope_family"]
+other = "משפחה"
+
+["list.scope_mine"]
+other = "רק אני"
+
+["list.show_more"]
+other = "עוד"
+
+["list.sort"]
+other = "מיון לפי"
+
+["list.sort_cooked"]
+other = "הכי הרבה בישולים"
+
+["list.sort_rating"]
+other = "הכי מדורגים"
+
+["list.sort_recent"]
+other = "בושלו או נצפו לאחרונה"
+
+["list.sort_relevance"]
+other = "הכי מתאים"
+
+["list.sort_title"]
+other = "שם"
+
+["list.sort_updated"]
+other = "שונו לאחרונה"
+
+["list.title"]
+other = "מתכונים"
+
+["nav.add"]
+other = "הוספה"
+
+["nav.add_recipe"]
+other = "הוספת מתכון"
+
+["nav.categories"]
+other = "קטגוריות"
+
+["nav.home"]
+other = "בית"
+
+["nav.inbox"]
+other = "מתכונים חדשים"
+
+["nav.inbox_count"]
+one = "מתכונים חדשים לבדיקה ({{.Count}})"
+other = "מתכונים חדשים לבדיקה ({{.Count}})"
+
+["nav.main"]
+other = "ניווט ראשי"
+
+["nav.menu"]
+other = "תפריט"
+
+["nav.search"]
+other = "חיפוש"
+
+["nav.settings"]
+other = "הגדרות"
+
+["nav.sign_out"]
+other = "התנתקות"
+
+["nav.theme"]
+other = "מראה"
+
+["nav.tokens"]
+other = "גישה לעוזר"
+
+["recipe.add_oven"]
+other = "הוספת הגדרות תנור"
+
+["recipe.by"]
+other = "מאת {{.Name}}"
+
+["recipe.categories"]
+other = "קטגוריות"
+
+["recipe.cooked_last"]
+other = "לאחרונה ב-{{.Date}}"
+
+["recipe.cooked_never"]
+other = "עדיין לא בושל."
+
+["recipe.cooked_times"]
+one = "בושל פעם אחת"
+two = "בושל פעמיים"
+many = "בושל {{.Count}} פעמים"
+other = "בושל {{.Count}} פעמים"
+
+["recipe.cooked_title"]
+other = "יומן בישולים"
+
+["recipe.cooked_today"]
+other = "בישלתי היום"
+
+["recipe.copy"]
+other = "העתקה למתכונים שלי"
+
+["recipe.delete"]
+other = "מחיקה לתמיד"
+
+["recipe.edit"]
+other = "עריכה"
+
+["recipe.family"]
+other = "משפחה"
+
+["recipe.favourite"]
+other = "הוספה למועדפים"
+
+["recipe.favourites"]
+other = "מועדפים"
+
+["recipe.found_on"]
+other = "נמצא ב:"
+
+["recipe.hero.accessories"]
+other = "להשתמש ב"
+
+["recipe.hero.core_temp"]
+other = "טמפרטורת ליבה"
+
+["recipe.hero.frame_broil"]
+other = "המסגרת במדף העליון"
+
+["recipe.hero.ignition"]
+other = "הפלטים נדלקים כ-3–4 דקות לפני שהבישול מתחיל"
+
+["recipe.hero.none"]
+other = "עדיין אין הגדרות תנור"
+
+["recipe.hero.oil_warning"]
+other = "מעל 260 °C: בלי חמאה או שמן זית"
+
+["recipe.hero.phase1"]
+other = "שלב 1"
+
+["recipe.hero.phase2"]
+other = "שלב 2"
+
+["recipe.hero.prealert"]
+other = "תקבלו תזכורת 5 דקות לפני הסוף"
+
+["recipe.hero.preheat"]
+other = "מחממים קודם"
+
+["recipe.hero.preheat_min"]
+other = "מחממים קודם (≈ {{.Min}} דקות)"
+
+["recipe.hero.woodfire_on"]
+other = "אש עצים פועלת"
+
+["recipe.ingredients"]
+other = "מצרכים"
+
+["recipe.just_me"]
+other = "רק אני"
+
+["recipe.last_changed"]
+other = "שונה לאחרונה ב-{{.Date}} על ידי {{.Name}}"
+
+["recipe.log_delete"]
+other = "מחיקת ההערה"
+
+["recipe.log_note"]
+other = "הערה (לא חובה)"
+
+["recipe.log_note_ph"]
+other = "בפעם הבאה פחות מלח…"
+
+["recipe.log_photo"]
+other = "תמונה (לא חובה)"
+
+["recipe.log_photo_failed"]
+other = "נשמר, אבל התמונה לא עלתה."
+
+["recipe.log_rating"]
+other = "דירוג (לא חובה)"
+
+["recipe.no_ingredients"]
+other = "עדיין אין מצרכים."
+
+["recipe.no_steps"]
+other = "עדיין אין שלבים."
+
+["recipe.notes"]
+other = "הערות"
+
+["recipe.our_notes"]
+other = "ההערות שלנו"
+
+["recipe.oven_settings"]
+other = "הגדרות התנור"
+
+["recipe.photos"]
+other = "תמונות"
+
+["recipe.prep_time"]
+other = "הכנה: {{.Min}} דקות"
+
+["recipe.servings"]
+other = "מנות"
+
+["recipe.servings_less"]
+other = "פחות מנות"
+
+["recipe.servings_more"]
+other = "יותר מנות"
+
+["recipe.share_family"]
+other = "שיתוף עם המשפחה"
+
+["recipe.share_link"]
+other = "שיתוף קישור"
+
+["recipe.share_off"]
+other = "המשפחה כבר לא תראה את המתכון הזה."
+
+["recipe.share_on"]
+other = "כל המשפחה תראה את המתכון הזה."
+
+["recipe.shared_by"]
+other = "מאת {{.Name}}"
+
+["recipe.stars"]
+one = "כוכב אחד"
+two = "שני כוכבים"
+many = "{{.Count}} כוכבים"
+other = "{{.Count}} כוכבים"
+
+["recipe.start_cooking"]
+other = "מתחילים לבשל"
+
+["recipe.steps"]
+other = "שלבים"
+
+["recipe.tags"]
+other = "מילות מפתח"
+
+["recipe.unfavourite"]
+other = "הסרה מהמועדפים"
+
+["recipe.woodfire"]
+other = "אש עצים"
+
+["search.go"]
+other = "חיפוש"
+
+["search.label"]
+other = "חיפוש מתכונים"
+
+["search.placeholder"]
+other = "חיפוש מתכונים"
+
+["settings.assistant"]
+other = "גישה לעוזר"
+
+["settings.title"]
+other = "הגדרות"
+
+["settings.version"]
+other = "גרסת האפליקציה"
+
+["signin.button"]
+other = "התחברות"
+
+["signin.forgot"]
+other = "שכחתם סיסמה? שאלו את ליאור."
+
+["signin.signed_out"]
+other = "התנתקתם"
+
+["signin.title"]
+other = "התחברות"
+
+["tokens.actions"]
+other = "פעולות"
+
+["tokens.copy"]
+other = "העתקה"
+
+["tokens.create"]
+other = "יצירת מפתח"
+
+["tokens.created"]
+other = "מפתח הגישה החדש שלכם"
+
+["tokens.days"]
+one = "יום אחד"
+two = "יומיים"
+many = "{{.Count}} ימים"
+other = "{{.Count}} ימים"
+
+["tokens.existing"]
+other = "המפתחות שלכם"
+
+["tokens.expires"]
+other = "תוקף עד"
+
+["tokens.expiry"]
+other = "תקף למשך"
+
+["tokens.key"]
+other = "מפתח גישה"
+
+["tokens.last_used"]
+other = "שימוש אחרון"
+
+["tokens.lead"]
+other = "תנו לעוזר שלכם מפתח כדי שיוכל לשלוח לכם הצעות למתכונים. המפתח אף פעם לא מאפשר לו לשנות או למחוק מתכונים."
+
+["tokens.name"]
+other = "שם"
+
+["tokens.name_label"]
+other = "בשביל מה זה?"
+
+["tokens.name_ph"]
+other = "למשל: העוזר שלי"
+
+["tokens.never"]
+other = "אף פעם"
+
+["tokens.never_expires"]
+other = "בלי תפוגה"
+
+["tokens.new"]
+other = "יצירת מפתח גישה"
+
+["tokens.none"]
+other = "עדיין אין מפתחות גישה."
+
+["tokens.once"]
+other = "לא תוכלו לראות אותו שוב. העתיקו אותו עכשיו."
+
+["tokens.revoke"]
+other = "כיבוי"
+
+["tokens.scope.inbox:write"]
+other = "לשלוח מתכונים"
+
+["tokens.scope.recipes:read"]
+other = "לקרוא מתכונים"
+
+["tokens.scope_help.inbox:write"]
+other = "מוסיף הצעות ל„מתכונים חדשים לבדיקה”. שום דבר לא נשמר עד שתאשרו."
+
+["tokens.scope_help.recipes:read"]
+other = "מאפשר לו לחפש מתכונים שאתם רואים, למשל כדי לא לשלוח כפילויות."
+
+["tokens.scopes"]
+other = "מה מותר"
+
+["tokens.scopes_label"]
+other = "מה מותר לו לעשות?"
+
+["tokens.status"]
+other = "מצב"
+
+["tokens.status.active"]
+other = "פעיל"
+
+["tokens.status.expired"]
+other = "פג תוקף"
+
+["tokens.status.revoked"]
+other = "כבוי"
+
+["tokens.title"]
+other = "גישה לעוזר"

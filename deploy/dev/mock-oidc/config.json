@@ -1,0 +1,22 @@
+{
+  "interactiveLogin": true,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "requestMappings": [
+        {
+          "requestParam": "scope",
+          "match": "*",
+          "claims": {
+            "sub": "mock-user",
+            "name": "Mock User",
+            "email": "mock@example.com",
+            "groups": ["family", "recipes-admins"],
+            "aud": ["recipes"]
+          }
+        }
+      ]
+    }
+  ]
+}

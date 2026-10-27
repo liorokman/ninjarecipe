@@ -1,0 +1,39 @@
+{{define "oven_hero"}}{{/* arg: []OvenStageView */}}
+<ol class="oven-hero" data-test="oven-hero">
+{{range .}}
+  <li class="stage-card{{if .IsGourmet}} is-gourmet{{end}}" data-test="stage-card" data-mode="{{.Mode}}">
+    <span class="stage-num" aria-hidden="true">{{.Position}}</span>
+    <div class="stage-main">
+      <div class="stage-mode">
+        <span class="mode-name">{{T (printf "oven.mode.%s" .Mode)}}</span>
+        {{if .Preset}}<span class="mode-preset">{{T (printf "oven.preset.%s" .Preset)}}</span>{{end}}
+        {{if .Woodfire}}<span class="badge badge-fire" data-test="woodfire-badge">🔥 {{T "recipe.hero.woodfire_on"}}{{if .PelletBlend}} <span class="badge-detail">({{T (printf "oven.pellet.%s" .PelletBlend)}}{{if .PelletNote}}, <bdi dir="auto">{{.PelletNote}}</bdi>{{end}})</span>{{else if .PelletNote}} <span class="badge-detail">(<bdi dir="auto">{{.PelletNote}}</bdi>)</span>{{end}}</span>{{end}}
+      </div>
+      {{if .IsGourmet}}
+      <div class="stage-nums gourmet">
+        <div class="phase"><span class="phase-label">{{T "recipe.hero.phase1"}}</span>{{with .TemperatureC}}<bdi class="num">{{fmtTemp .}}</bdi>{{end}}{{with .DurationSeconds}}<bdi class="num">{{fmtDurationWords .}}</bdi>{{end}}</div>
+        <span class="phase-arrow">{{template "icon_dir" "arrow"}}</span>
+        <div class="phase"><span class="phase-label">{{T "recipe.hero.phase2"}}</span>{{with .Temperature2C}}<bdi class="num">{{fmtTemp .}}</bdi>{{end}}{{with .Duration2Seconds}}<bdi class="num">{{fmtDurationWords .}}</bdi>{{end}}</div>
+      </div>
+      {{else}}
+      <div class="stage-nums">
+        {{with .TemperatureC}}<bdi class="num">{{fmtTemp .}}</bdi>{{end}}
+        {{with .DurationSeconds}}<bdi class="num">{{fmtDurationWords .}}</bdi>{{end}}
+      </div>
+      {{end}}
+      <ul class="stage-hints">
+        {{if .Preheat}}<li>{{template "icon" "flame"}}{{with .PreheatMinutes}}{{T "recipe.hero.preheat_min" "Min" .}}{{else}}{{T "recipe.hero.preheat"}}{{end}}</li>{{end}}
+        {{if .SmokerIgnition}}<li>{{template "icon" "flame"}}{{T "recipe.hero.ignition"}}</li>{{end}}
+        {{if .ShowFrameProminent}}<li class="hint-strong" data-test="frame-hint">{{template "icon" "list"}}{{T "recipe.hero.frame_broil"}}</li>{{end}}
+        {{with .TargetCoreTempC}}<li>{{template "icon" "timer"}}{{T "recipe.hero.core_temp"}} <bdi>{{fmtTemp .}}</bdi></li>{{end}}
+        {{if .OilWarning}}<li class="hint-warn" data-test="oil-warning">⚠️ {{T "recipe.hero.oil_warning"}}</li>{{end}}
+        {{if .PreAlert}}<li>{{template "icon" "bell"}}{{T "recipe.hero.prealert"}}</li>{{end}}
+      </ul>
+      {{if .Accessories}}<p class="stage-acc"><span class="muted">{{T "recipe.hero.accessories"}}:</span> {{range $i, $a := .Accessories}}{{if $i}}, {{end}}{{T (printf "oven.accessory.%s" $a)}}{{end}}{{if not .ShowFrameProminent}} · <span class="muted">{{T (printf "oven.frame.%s" .FrameLevel)}}</span>{{end}}</p>{{end}}
+      {{if .Notes}}<p class="stage-notes" dir="auto">{{.Notes}}</p>{{end}}
+    </div>
+  </li>
+{{else}}
+  <li class="stage-empty">{{T "recipe.hero.none"}}</li>
+{{end}}
+</ol>{{end}}

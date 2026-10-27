@@ -1,0 +1,24 @@
+{{define "recipe_card"}}<a data-test="results-card" href="{{url "recipe.view" .ID}}" dir="{{.Dir}}">{{.Title}} {{.PrimaryMode}}{{with .PrimaryTempC}} {{.}}{{end}} {{.Visibility}}</a>{{end}}
+{{define "results"}}{{range .Cards}}{{template "recipe_card" .}}{{else}}<p data-test="empty">none</p>{{end}}{{if .NextURL}}<button data-test="show-more" hx-get="{{.NextURL}}">more</button>{{end}}{{end}}
+{{define "body"}}{{range .Ingredients}}<li>{{.Item}}</li>{{end}}{{range .Steps}}<li>{{.Text}}</li>{{end}}{{range .Images}}<img src="{{.ThumbURL}}">{{end}}{{range .Categories}}<span>{{.Name}}</span>{{end}}{{if .SourceHost}}<a href="{{.SourceURL}}">{{.SourceHost}}</a>{{end}}{{end}}
+{{define "favourite_button"}}<button id="fav-{{.RecipeID}}" data-test="favourite-button" data-on="{{.IsFavourite}}" hx-post="{{url "recipe.favourite" .RecipeID}}">fav</button>{{end}}
+{{define "visibility_control"}}<form method="post" action="{{url "recipe.visibility" .RecipeID}}" data-test="visibility-switch" data-shared="{{.Shared}}"><input type="hidden" name="shared" value="{{if .Shared}}0{{else}}1{{end}}"><button>toggle</button></form>{{end}}
+{{define "cooklog_section"}}<section id="cook-logs">{{.Summary.Count}} {{if .PhotoFailed}}<p data-test="photo-failed">failed</p>{{end}}{{if .CanLogCook}}<form data-test="cooklog-form" method="post" action="{{url "cooklog.add" .RecipeID}}" enctype="multipart/form-data"><input name="note"><input name="rating"><input type="file" name="photo"><button>log</button></form>{{end}}{{range .Logs}}<div data-test="cooklog">{{.AuthorName}} {{.Note}} {{.PhotoThumbURL}}{{if .CanDelete}}<form data-test="cooklog-delete-form" method="post" action="{{url "cooklog.delete" $.RecipeID .ID}}"><button>x</button></form>{{end}}</div>{{end}}</section>{{end}}
+{{define "image_tile"}}<div data-image-id="{{.ID}}"><img src="{{.ThumbURL}}"></div>{{end}}
+{{define "upload_error"}}<p class="upload-error" role="alert">{{.Message}}</p>{{end}}
+{{define "conflict"}}<div id="conflict" role="alert"><a href="{{.RecipeURL}}">open</a></div>{{end}}
+{{define "recipe_form"}}<form id="recipe-form" method="post" action="{{.Action}}">
+{{if .Summary}}<div id="error-summary" data-test="error-summary">{{range .Summary}}<a href="#{{.FieldID}}">{{.Message}}</a>{{end}}</div>{{end}}
+<input type="hidden" name="version" value="{{.Form.Version}}">
+<input id="{{fieldID "title"}}" name="title" value="{{.Form.Title}}">
+<textarea name="description">{{.Form.Description}}</textarea><textarea name="notes">{{.Form.Notes}}</textarea>
+<input name="language" value="{{.Form.Language}}"><input name="servings" value="{{.Form.Servings}}"><input name="prep_minutes" value="{{.Form.PrepMinutes}}">
+<input name="source_url" value="{{.Form.SourceURL}}"><input name="source_name" value="{{.Form.SourceName}}">
+{{range .AllCategories}}<label><input type="checkbox" name="category" value="{{.Slug}}" {{if .Selected}}checked{{end}}>{{.Name}}</label>{{end}}
+<input name="tags" value="{{.Form.Tags}}"><textarea name="ingredients">{{.Form.Ingredients}}</textarea><textarea name="steps">{{.Form.Steps}}</textarea>
+{{if eq .Mode "new"}}<input type="hidden" name="visibility" value="{{.Form.Visibility}}">{{end}}
+<div id="stage-list">{{range .Form.Stages}}<div data-test="stage-card"><input name="stage[{{.Idx}}].mode" value="{{.Mode}}"><input name="stage[{{.Idx}}].temperature_c" value="{{.TemperatureC}}"><input name="stage[{{.Idx}}].duration_seconds" value="{{.DurationSeconds}}"></div>{{end}}</div>
+{{range $k, $v := .Errors}}<p class="field-error" data-field="{{$k}}">{{range $v}}{{.}} {{end}}</p>{{end}}
+{{range $k, $v := .Warnings}}<p class="field-warning" data-field="{{$k}}">{{range $v}}{{.}} {{end}}</p>{{end}}
+<script type="application/json" id="editor-config">{{.Config}}</script><script type="application/json" id="oven-spec">{{.OvenSpec}}</script>
+<button data-test="save">{{T .SubmitKey}}</button></form>{{end}}

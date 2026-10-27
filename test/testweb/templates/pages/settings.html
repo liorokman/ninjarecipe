@@ -1,0 +1,1 @@
+{{define "content"}}<p>{{.Version}}</p><a href="{{url "tokens.list"}}">tokens</a>{{if .Layout.User.IsAdmin}}<a href="{{url "admin.categories"}}">admin</a>{{end}}{{end}}

@@ -1,0 +1,302 @@
+{
+  "limits": {
+    "temp_min": 40,
+    "temp_max": 370,
+    "max_stages": 10,
+    "preheat_minutes_max": 120,
+    "core_temp_min": 30,
+    "core_temp_max": 100,
+    "pellet_note_max": 60,
+    "stage_notes_max": 500,
+    "oil_warning_c": 260
+  },
+  "modes": [
+    {
+      "key": "pizza",
+      "dial": "PIZZA",
+      "preheat": true,
+      "frame_level": "bottom",
+      "woodfire": "allowed",
+      "default_accessory": "pizza_stone",
+      "temperature": {
+        "kind": "by_preset",
+        "accepted": [
+          40,
+          370
+        ],
+        "recommended": [
+          175,
+          370
+        ]
+      },
+      "duration": {
+        "kind": "required",
+        "accepted": [
+          30,
+          3600
+        ],
+        "recommended": [
+          60,
+          1200
+        ]
+      },
+      "temperature2": null,
+      "duration2": null
+    },
+    {
+      "key": "gourmet_roast",
+      "dial": "GOURMET ROAST",
+      "preheat": true,
+      "frame_level": "bottom",
+      "woodfire": "allowed",
+      "default_accessory": "pro_heat_pan",
+      "temperature": {
+        "kind": "required",
+        "accepted": [
+          40,
+          370
+        ],
+        "recommended": [
+          200,
+          370
+        ]
+      },
+      "duration": {
+        "kind": "required",
+        "accepted": [
+          60,
+          21600
+        ],
+        "recommended": [
+          300,
+          1800
+        ]
+      },
+      "temperature2": {
+        "kind": "required",
+        "accepted": [
+          40,
+          370
+        ],
+        "recommended": [
+          95,
+          250
+        ]
+      },
+      "duration2": {
+        "kind": "required",
+        "accepted": [
+          60,
+          21600
+        ],
+        "recommended": [
+          600,
+          14400
+        ]
+      }
+    },
+    {
+      "key": "max_roast",
+      "dial": "MAX ROAST",
+      "preheat": true,
+      "frame_level": "bottom",
+      "woodfire": "allowed",
+      "default_accessory": "pro_heat_pan",
+      "temperature": {
+        "kind": "required",
+        "accepted": [
+          40,
+          370
+        ],
+        "recommended": [
+          230,
+          370
+        ]
+      },
+      "duration": {
+        "kind": "required",
+        "accepted": [
+          60,
+          14400
+        ],
+        "recommended": [
+          300,
+          7200
+        ]
+      },
+      "temperature2": null,
+      "duration2": null
+    },
+    {
+      "key": "smoker",
+      "dial": "SMOKER",
+      "preheat": false,
+      "frame_level": "bottom",
+      "woodfire": "forced",
+      "default_accessory": "pro_heat_pan",
+      "temperature": {
+        "kind": "required",
+        "accepted": [
+          40,
+          370
+        ],
+        "recommended": [
+          60,
+          190
+        ]
+      },
+      "duration": {
+        "kind": "required",
+        "accepted": [
+          60,
+          86400
+        ],
+        "recommended": [
+          1800,
+          43200
+        ]
+      },
+      "temperature2": null,
+      "duration2": null
+    },
+    {
+      "key": "bake",
+      "dial": "BAKE",
+      "preheat": true,
+      "frame_level": "bottom",
+      "woodfire": "allowed",
+      "default_accessory": "pro_heat_pan",
+      "temperature": {
+        "kind": "required",
+        "accepted": [
+          40,
+          370
+        ],
+        "recommended": [
+          150,
+          370
+        ]
+      },
+      "duration": {
+        "kind": "required",
+        "accepted": [
+          60,
+          21600
+        ],
+        "recommended": [
+          300,
+          14400
+        ]
+      },
+      "temperature2": null,
+      "duration2": null
+    },
+    {
+      "key": "broil",
+      "dial": "BROIL",
+      "preheat": false,
+      "frame_level": "top",
+      "woodfire": "forbidden",
+      "default_accessory": "pro_heat_pan",
+      "temperature": {
+        "kind": "required",
+        "accepted": [
+          40,
+          370
+        ],
+        "recommended": [
+          260,
+          370
+        ]
+      },
+      "duration": {
+        "kind": "required",
+        "accepted": [
+          30,
+          3600
+        ],
+        "recommended": [
+          60,
+          1800
+        ]
+      },
+      "temperature2": null,
+      "duration2": null
+    },
+    {
+      "key": "dehydrate",
+      "dial": "DEHYDRATE",
+      "preheat": false,
+      "frame_level": "bottom",
+      "woodfire": "allowed",
+      "default_accessory": "pro_heat_pan",
+      "temperature": {
+        "kind": "required",
+        "accepted": [
+          40,
+          370
+        ],
+        "recommended": [
+          40,
+          90
+        ]
+      },
+      "duration": {
+        "kind": "required",
+        "accepted": [
+          600,
+          86400
+        ],
+        "recommended": [
+          3600,
+          43200
+        ]
+      },
+      "temperature2": null,
+      "duration2": null
+    },
+    {
+      "key": "keep_warm",
+      "dial": "KEEP WARM",
+      "preheat": false,
+      "frame_level": "bottom",
+      "woodfire": "forbidden",
+      "default_accessory": "pro_heat_pan",
+      "temperature": {
+        "kind": "forbidden"
+      },
+      "duration": {
+        "kind": "optional",
+        "accepted": [
+          0,
+          43200
+        ],
+        "recommended": [
+          0,
+          7200
+        ]
+      },
+      "temperature2": null,
+      "duration2": null
+    }
+  ],
+  "pizza_presets": [
+    "artisan",
+    "thin_crust",
+    "new_york",
+    "chicago",
+    "calzone",
+    "custom"
+  ],
+  "pellet_blends": [
+    "all_purpose",
+    "robust",
+    "other"
+  ],
+  "accessories": [
+    "pizza_stone",
+    "pro_heat_pan",
+    "roast_rack",
+    "own_pan"
+  ]
+}

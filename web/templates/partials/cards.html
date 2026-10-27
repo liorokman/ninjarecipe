@@ -1,0 +1,47 @@
+{{define "recipe_card"}}<article class="card" data-test="results-card" data-id="{{.ID}}">
+  <a class="card-link" href="{{url "recipe.view" .ID}}">
+    <div class="card-thumb">{{if .ThumbURL}}<img src="{{.ThumbURL}}" alt="" loading="lazy" width="400" height="300">{{else}}<span class="thumb-ph" aria-hidden="true">🍽️</span>{{end}}
+      <span class="card-badges">{{if .UsesWoodfire}}<span class="pill pill-fire" title="{{T "recipe.woodfire"}}">🔥</span>{{end}}{{if .IsFavourite}}<span class="pill pill-fav" title="{{T "recipe.favourite"}}">♥</span>{{end}}</span>
+    </div>
+    <div class="card-body">
+      <h3 class="card-title" dir="{{if .Dir}}{{.Dir}}{{else}}auto{{end}}"{{with .Lang}} lang="{{.}}"{{end}}>{{.Title}}</h3>
+      <p class="card-meta">{{if .PrimaryMode}}<span>{{T (printf "oven.mode.%s" .PrimaryMode)}}{{with .PrimaryTempC}} · <bdi>{{fmtTemp .}}</bdi>{{end}}</span>{{end}}{{if .TotalSeconds}}<span class="muted"><bdi>{{fmtDurationWords .TotalSeconds}}</bdi></span>{{end}}</p>
+      <p class="card-foot">{{template "visibility_badge" .Visibility}}{{with .At}}<span class="muted ago">{{fmtAgo .}}</span>{{end}}</p>
+    </div>
+  </a>
+</article>{{end}}
+
+{{define "results"}}<div class="card-grid" data-test="results-grid">
+{{range .Cards}}{{template "recipe_card" .}}{{end}}
+{{if .NextURL}}<div class="show-more-wrap"><button type="button" class="btn btn-secondary btn-lg" data-test="show-more" hx-get="{{.NextURL}}" hx-target="this" hx-swap="outerHTML" hx-trigger="click"><span>{{T "list.show_more"}}</span></button></div>{{end}}
+</div>
+{{if not .Cards}}{{if not .NextURL}}
+<div class="empty" data-test="empty-state">
+  <p class="empty-icon" aria-hidden="true">🥘</p>
+  {{if .Q}}<p class="empty-title">{{T "list.empty_for" "Q" .Q}}</p>
+  <a class="btn btn-secondary btn-lg" href="{{url "recipes.list"}}" data-test="clear-search">{{T "list.clear_search"}}</a>
+  {{else if .HasFilters}}<p class="empty-title">{{T "list.empty_filters"}}</p>
+  <a class="btn btn-secondary btn-lg" href="{{url "recipes.list"}}">{{T "list.clear"}}</a>
+  {{else}}<p class="empty-title">{{T "list.empty"}}</p>
+  <a class="btn btn-primary btn-lg" href="{{url "recipe.new"}}">{{template "icon" "plus"}}{{T "nav.add_recipe"}}</a>{{end}}
+</div>
+{{end}}{{end}}{{end}}
+
+{{define "favourite_button"}}<button type="submit" name="on" value="{{if .IsFavourite}}0{{else}}1{{end}}" id="fav-{{.RecipeID}}" class="icon-btn fav-btn{{if .IsFavourite}} is-on{{end}}" aria-pressed="{{if .IsFavourite}}true{{else}}false{{end}}" aria-label="{{if .IsFavourite}}{{T "recipe.unfavourite"}}{{else}}{{T "recipe.favourite"}}{{end}}" data-test="favourite-button">{{if .IsFavourite}}{{template "icon" "heart-fill"}}{{else}}{{template "icon" "heart"}}{{end}}</button>{{end}}
+
+{{define "visibility_control"}}<div id="visibility-control" class="visibility" data-test="visibility-control">
+{{if .CanChange}}
+  <form method="post" action="{{url "recipe.visibility" .RecipeID}}" hx-post="{{url "recipe.visibility" .RecipeID}}" hx-target="#visibility-control" hx-swap="outerHTML">
+    <input type="hidden" name="shared" value="{{if .Shared}}0{{else}}1{{end}}">
+    <button type="submit" role="switch" aria-checked="{{if .Shared}}true{{else}}false{{end}}" class="switch-row" data-test="visibility-switch">
+      <span class="switch{{if .Shared}} is-on{{end}}" aria-hidden="true"><span class="switch-knob"></span></span>
+      <span class="switch-label">{{T "recipe.share_family"}}</span>
+    </button>
+  </form>
+  <p class="hint visibility-msg" data-msg="on" role="status" hidden>{{T "recipe.share_on"}}</p>
+  <p class="hint visibility-msg" data-msg="off" role="status" hidden>{{T "recipe.share_off"}}</p>
+{{else}}
+  {{if .Shared}}{{template "visibility_badge" "shared"}}{{else}}{{template "visibility_badge" "private"}}{{end}}
+  {{if .OwnerName}}<span class="muted">{{T "recipe.shared_by" "Name" .OwnerName}}</span>{{end}}
+{{end}}
+</div>{{end}}

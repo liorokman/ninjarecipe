@@ -1,0 +1,101 @@
+{{define "content"}}
+<div class="cook-root" data-test="cook" data-recipe-id="{{.RecipeBody.ID}}" data-back-url="{{url "recipe.view" .RecipeBody.ID}}">
+  <header class="cook-top">
+    <div class="cook-top-row">
+      <h1 class="cook-title" dir="{{if .RecipeBody.Dir}}{{.RecipeBody.Dir}}{{else}}auto{{end}}">{{.RecipeBody.Title}}</h1>
+      <button type="button" class="icon-btn" data-action="theme-toggle" data-test="theme-toggle" aria-label="{{T "nav.theme"}}"><span class="theme-icons">{{template "icon" "sun"}}{{template "icon" "moon"}}</span></button>
+      <button type="button" class="btn btn-secondary" data-action="cook-done" data-test="cook-done">{{template "icon" "x"}}{{T "cook.done"}}</button>
+    </div>
+
+    {{if .RecipeBody.Stages}}
+    <div class="cook-stage-strip" data-test="stage-strip">
+      {{if gt (len .RecipeBody.Stages) 1}}
+      <div class="stage-switch">
+        <button type="button" class="icon-btn" data-action="stage-prev" aria-label="{{T "cook.stage_prev"}}">{{template "icon_dir" "chevron"}}</button>
+        <span class="stage-counter" data-stage-counter aria-live="polite">{{T "cook.stage_of" "N" 1 "Total" (len .RecipeBody.Stages)}}</span>
+        <button type="button" class="icon-btn" data-action="stage-next" aria-label="{{T "cook.stage_next"}}">{{template "icon_dir" "chevron"}}</button>
+      </div>
+      {{end}}
+      {{range $i, $s := .RecipeBody.Stages}}
+      <div class="cook-stage{{if eq $i 0}} is-current{{end}}" data-stage="{{$i}}" data-test="cook-stage">
+        <div class="cook-stage-head">
+          <span class="mode-name">{{T (printf "oven.mode.%s" $s.Mode)}}</span>
+          {{if $s.Preset}}<span class="mode-preset">{{T (printf "oven.preset.%s" $s.Preset)}}</span>{{end}}
+          {{if $s.Woodfire}}<span class="badge badge-fire">🔥 {{T "recipe.hero.woodfire_on"}}</span>{{end}}
+        </div>
+        <div class="stage-nums cook-nums">
+          {{if $s.IsGourmet}}
+            {{with $s.TemperatureC}}<bdi class="num">{{fmtTemp .}}</bdi>{{end}}{{with $s.DurationSeconds}}<bdi class="num">{{fmtDurationWords .}}</bdi>{{end}}
+            <span class="phase-arrow">{{template "icon_dir" "arrow"}}</span>
+            {{with $s.Temperature2C}}<bdi class="num">{{fmtTemp .}}</bdi>{{end}}{{with $s.Duration2Seconds}}<bdi class="num">{{fmtDurationWords .}}</bdi>{{end}}
+          {{else}}
+            {{with $s.TemperatureC}}<bdi class="num">{{fmtTemp .}}</bdi>{{end}}{{with $s.DurationSeconds}}<bdi class="num">{{fmtDurationWords .}}</bdi>{{end}}
+          {{end}}
+        </div>
+        <ul class="stage-hints compact">
+          {{if $s.Preheat}}<li>{{template "icon" "flame"}}{{with $s.PreheatMinutes}}{{T "recipe.hero.preheat_min" "Min" .}}{{else}}{{T "recipe.hero.preheat"}}{{end}}</li>{{end}}
+          {{if $s.SmokerIgnition}}<li>{{template "icon" "flame"}}{{T "recipe.hero.ignition"}}</li>{{end}}
+          {{if $s.ShowFrameProminent}}<li class="hint-strong">{{T "recipe.hero.frame_broil"}}</li>{{end}}
+          {{if $s.OilWarning}}<li class="hint-warn">⚠️ {{T "recipe.hero.oil_warning"}}</li>{{end}}
+        </ul>
+        {{if $s.TotalSeconds}}<button type="button" class="btn btn-primary" data-action="stage-timer-start" data-stage="{{$i}}" data-test="timer-start-stage">{{template "icon" "timer"}}{{T "cook.start_stage_timer" "Duration" (fmtDurationWords $s.TotalSeconds)}}</button>{{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    <div id="timer-tray" class="timer-tray" data-test="timer-tray" aria-live="off" hidden></div>
+  </header>
+
+  <div id="timer-banner" class="timer-banner" data-test="timer-banner" role="alert" aria-live="assertive" hidden>
+    <span class="timer-banner-text" data-banner-text></span>
+    <button type="button" class="btn btn-secondary" data-action="timer-dismiss" data-test="timer-dismiss">{{T "cook.dismiss"}}</button>
+  </div>
+
+  <div class="cook-stage-area" data-swipe-area>
+    {{range $i, $st := .RecipeBody.Steps}}
+    <section class="cook-step{{if eq $i 0}} is-current{{end}}" id="step-{{$st.Position}}" data-step="{{$i}}" aria-label="{{T "cook.step_of" "N" $st.Position "Total" (len $.RecipeBody.Steps)}}">
+      <p class="cook-step-text" dir="auto">{{$st.Text}}</p>
+      {{if $st.TimerSeconds}}<button type="button" class="btn btn-primary btn-xl timer-start" data-action="step-timer-start" data-seconds="{{$st.TimerSeconds}}" data-label="{{T "cook.step_timer_label" "N" $st.Position}}" data-test="timer-start">{{template "icon" "timer"}}{{T "cook.start_timer" "Duration" (fmtDuration $st.TimerSeconds)}}</button>{{end}}
+    </section>
+    {{else}}
+    <section class="cook-step is-current"><p class="cook-step-text muted">{{T "cook.no_steps"}}</p></section>
+    {{end}}
+  </div>
+
+  <footer class="cook-bar">
+    <button type="button" class="btn btn-secondary cook-nav" data-action="step-back" data-test="step-back">{{template "icon_dir" "arrow"}}<span>{{T "cook.back"}}</span></button>
+    <div class="cook-mid">
+      <span class="step-counter" data-step-counter aria-live="polite">{{T "cook.step_of" "N" 1 "Total" (len .RecipeBody.Steps)}}</span>
+      <button type="button" class="btn btn-quiet" data-action="open-ingredients" data-test="ingredients-open" aria-controls="ingredients-panel">{{template "icon" "list"}}{{T "cook.ingredients"}}</button>
+    </div>
+    <button type="button" class="btn btn-primary cook-nav" data-action="step-next" data-test="step-next"><span data-next-label data-label-next="{{T "cook.next"}}" data-label-finish="{{T "cook.finish"}}">{{T "cook.next"}}</span>{{template "icon_dir" "arrow"}}</button>
+  </footer>
+
+  <dialog id="ingredients-panel" class="dialog panel" aria-labelledby="ing-panel-title" data-test="ingredients-panel">
+    <div class="dialog-body">
+      <div class="dialog-head"><h2 id="ing-panel-title">{{T "recipe.ingredients"}}</h2><button type="button" class="icon-btn" data-action="close-dialog" aria-label="{{T "common.close"}}">{{template "icon" "x"}}</button></div>
+      {{template "servings_stepper" .RecipeBody}}
+      {{template "ingredient_list" .RecipeBody}}
+      <p class="hint">{{T "cook.tick_hint"}}</p>
+    </div>
+  </dialog>
+
+  <dialog id="done-dialog" class="dialog" aria-labelledby="done-title" data-test="done-dialog">
+    <form class="dialog-body log-form" method="post" action="{{url "cooklog.add" .RecipeBody.ID}}" enctype="multipart/form-data">
+      <h2 id="done-title">{{T "cook.did_you_cook"}}</h2>
+      <label class="field"><span class="field-label">{{T "recipe.log_note"}}</span><textarea name="note" rows="2" maxlength="2000" dir="auto" placeholder="{{T "recipe.log_note_ph"}}"></textarea></label>
+      <fieldset class="rating-input"><legend class="field-label">{{T "recipe.log_rating"}}</legend>
+        <div class="rating-row">{{range seq 1 5}}<label class="star-opt"><input type="radio" name="rating" value="{{.}}"><span class="star-face"><span class="star-off">{{template "icon" "star"}}</span><span class="star-on">{{template "icon" "star-fill"}}</span></span><span class="sr-only">{{T "recipe.stars" "Count" .}}</span></label>{{end}}</div>
+      </fieldset>
+      <div class="dialog-actions">
+        <button type="submit" class="btn btn-primary btn-lg" data-action="cook-finish" data-test="cook-yes">{{T "cook.yes"}}</button>
+        <a class="btn btn-secondary btn-lg" href="{{url "recipe.view" .RecipeBody.ID}}" data-action="cook-finish" data-test="cook-not-now">{{T "cook.not_now"}}</a>
+      </div>
+    </form>
+  </dialog>
+  <p class="sr-only" id="wake-hint" hidden>{{T "cook.wake_hint"}}</p>
+</div>
+<script type="application/json" id="cook-config">{{.Config}}</script>
+{{end}}
+{{define "scripts"}}<script type="module" src="{{asset "js/cook.js"}}"></script>{{end}}

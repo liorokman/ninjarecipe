@@ -1,0 +1,35 @@
+{{define "cooklog_entry"}}{{/* dict: RecipeID, Log */}}
+<li class="log" data-test="cooklog-entry">
+  <div class="log-head"><strong>{{.Log.AuthorName}}</strong> <time class="muted" datetime="{{.Log.At.Format "2006-01-02T15:04:05Z07:00"}}">{{fmtDate .Log.At}}</time>{{with .Log.Rating}} {{template "stars" .}}{{end}}</div>
+  {{if .Log.Note}}<p class="log-note" dir="auto">{{.Log.Note}}</p>{{end}}
+  {{if .Log.PhotoThumbURL}}<a class="log-photo" href="{{.Log.PhotoFullURL}}" data-action="open-image" data-src="{{.Log.PhotoFullURL}}"><img src="{{.Log.PhotoThumbURL}}" alt="" loading="lazy" width="160" height="120"></a>{{end}}
+  {{if .Log.CanDelete}}
+  <form method="post" action="{{url "cooklog.delete" .RecipeID .Log.ID}}" hx-post="{{url "cooklog.delete" .RecipeID .Log.ID}}" hx-target="#cook-logs" hx-swap="outerHTML" data-test="cooklog-delete-form">
+    <button type="submit" class="btn btn-quiet btn-sm">{{template "icon" "trash"}}{{T "recipe.log_delete"}}</button>
+  </form>{{end}}
+</li>{{end}}
+
+{{define "cooklog_section"}}<section id="cook-logs" class="block cook-logs" aria-labelledby="cooklogs-title" data-test="cook-logs">
+  <h2 id="cooklogs-title" class="block-title">{{T "recipe.cooked_title"}}</h2>
+  <p class="cook-summary" data-test="cook-summary">
+  {{if .Summary.Count}}{{T "recipe.cooked_times" "Count" .Summary.Count}}{{with .Summary.LastAt}} — {{T "recipe.cooked_last" "Date" (fmtDate .)}}{{end}}{{with .Summary.AvgRating}} · <span class="rating-avg">★ <bdi>{{fmtQty . ""}}</bdi></span> <bdi>({{$.Summary.RatingCount}})</bdi>{{end}}
+  {{else}}<span class="muted">{{T "recipe.cooked_never"}}</span>{{end}}
+  </p>
+  {{if .PhotoFailed}}<p class="flash flash-warning" role="alert">{{T "recipe.log_photo_failed"}}</p>{{end}}
+  {{if .CanLogCook}}
+  <form class="log-form" method="post" action="{{url "cooklog.add" .RecipeID}}" enctype="multipart/form-data" hx-post="{{url "cooklog.add" .RecipeID}}" hx-target="#cook-logs" hx-swap="outerHTML" hx-encoding="multipart/form-data" data-resize-photo data-test="cooklog-form">
+    <label class="field"><span class="field-label">{{T "recipe.log_note"}}</span>
+      <textarea name="note" rows="2" maxlength="{{.MaxNote}}" dir="auto" placeholder="{{T "recipe.log_note_ph"}}"></textarea></label>
+    <fieldset class="rating-input"><legend class="field-label">{{T "recipe.log_rating"}}</legend>
+      <div class="rating-row">{{range seq 1 5}}<label class="star-opt"><input type="radio" name="rating" value="{{.}}"><span class="star-face"><span class="star-off">{{template "icon" "star"}}</span><span class="star-on">{{template "icon" "star-fill"}}</span></span><span class="sr-only">{{T "recipe.stars" "Count" .}}</span></label>{{end}}</div>
+    </fieldset>
+    <label class="field"><span class="field-label">{{T "recipe.log_photo"}}</span>
+      <input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label>
+    <button type="submit" class="btn btn-primary btn-lg">{{template "icon" "check"}}{{T "recipe.cooked_today"}}</button>
+  </form>
+  {{end}}
+  {{if .Logs}}
+  <h3 class="sub-title">{{T "recipe.our_notes"}}</h3>
+  <ul class="logs">{{range .Logs}}{{template "cooklog_entry" (dict "RecipeID" $.RecipeID "Log" .)}}{{end}}</ul>
+  {{end}}
+</section>{{end}}

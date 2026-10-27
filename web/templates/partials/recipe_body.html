@@ -1,0 +1,63 @@
+{{define "ingredient_list"}}{{/* arg: RecipeBody */}}
+<ul class="ingredients" data-test="ingredients">
+{{$prev := ""}}{{range .Ingredients}}
+  {{if and .Section (ne .Section $prev)}}<li class="ing-section" dir="auto">{{.Section}}</li>{{end}}{{$prev = .Section}}
+  <li class="ingredient"{{with .Amount}} data-amount="{{.}}"{{end}}{{if .Unit}} data-unit="{{.Unit}}"{{end}}>
+    {{- if .Item}}<span class="ing-qty"><bdi>{{.AmountText}}</bdi></span>{{if .Unit}} <span class="ing-unit">{{T (printf "unit.%s" .UnitKey)}}</span>{{end}} <span class="ing-item" dir="auto">{{.Item}}</span>
+    {{- else}}<span class="ing-item" dir="auto">{{.RawText}}</span>{{end -}}
+  </li>
+{{end}}
+</ul>{{end}}
+
+{{define "servings_stepper"}}{{/* arg: RecipeBody */}}{{with .Servings}}
+<div class="servings" data-servings="{{.}}" data-test="servings">
+  <span class="servings-label" id="servings-label-{{$.ID}}">{{T "recipe.servings"}}</span>
+  <button type="button" class="icon-btn" data-action="servings-step" data-delta="-1" aria-label="{{T "recipe.servings_less"}}" data-test="servings-minus">{{template "icon" "minus"}}</button>
+  <output class="servings-value" data-servings-value aria-live="polite" aria-labelledby="servings-label-{{$.ID}}"><bdi>{{.}}</bdi></output>
+  <button type="button" class="icon-btn" data-action="servings-step" data-delta="1" aria-label="{{T "recipe.servings_more"}}" data-test="servings-plus">{{template "icon" "plus"}}</button>
+</div>{{end}}{{end}}
+
+{{define "recipe_hero"}}{{/* arg: RecipeBody */}}
+<section class="block" aria-labelledby="hero-title">
+  <h2 id="hero-title" class="block-title">{{T "recipe.oven_settings"}}</h2>
+  {{template "oven_hero" .Stages}}
+</section>{{end}}
+
+{{define "recipe_body"}}{{/* arg: RecipeBody (photos, ingredients, steps, notes) */}}
+{{if .Images}}
+<section class="block gallery" aria-label="{{T "recipe.photos"}}" data-test="gallery">
+  {{range $i, $im := .Images}}
+  <a class="gallery-item{{if eq $i 0}} is-cover{{end}}" href="{{$im.FullURL}}" data-action="open-image" data-src="{{$im.FullURL}}" data-caption="{{$im.Caption}}">
+    <img src="{{$im.ThumbURL}}" alt="{{$im.Caption}}" loading="{{if eq $i 0}}eager{{else}}lazy{{end}}" {{if $im.Width}}width="{{$im.Width}}" height="{{$im.Height}}"{{end}}>
+  </a>{{end}}
+</section>
+{{end}}
+<div class="recipe-cols">
+  <section class="block ingredients-block" aria-labelledby="ing-title">
+    <div class="block-head"><h2 id="ing-title" class="block-title">{{T "recipe.ingredients"}}</h2>{{template "servings_stepper" .}}</div>
+    {{if .Ingredients}}{{template "ingredient_list" .}}{{else}}<p class="muted">{{T "recipe.no_ingredients"}}</p>{{end}}
+  </section>
+  <section class="block steps-block" aria-labelledby="steps-title">
+    <h2 id="steps-title" class="block-title">{{T "recipe.steps"}}</h2>
+    {{if .Steps}}
+    <ol class="steps" data-test="steps">
+      {{range .Steps}}<li class="step"><span class="step-text" dir="auto">{{.Text}}</span>{{if .TimerSeconds}} <span class="timer-chip">{{template "icon" "timer"}}<bdi>{{fmtDuration .TimerSeconds}}</bdi></span>{{end}}</li>{{end}}
+    </ol>
+    {{else}}<p class="muted">{{T "recipe.no_steps"}}</p>{{end}}
+  </section>
+</div>
+{{if or .Description .Notes}}
+<section class="block notes-block">
+  {{if .Description}}<p class="description" dir="auto">{{.Description}}</p>{{end}}
+  {{if .Notes}}<h2 class="block-title">{{T "recipe.notes"}}</h2><p class="notes" dir="auto">{{.Notes}}</p>{{end}}
+</section>
+{{end}}
+{{if or .Categories .Tags .SourceURL .PrepMinutes}}
+<section class="block meta-block">
+  {{if .Categories}}<ul class="chips" aria-label="{{T "recipe.categories"}}">{{range .Categories}}<li><a class="chip chip-link" href="{{urlq "recipes.list" "category" .Slug}}">{{.Icon}} {{.Name}}</a></li>{{end}}</ul>{{end}}
+  {{if .Tags}}<ul class="chips" aria-label="{{T "recipe.tags"}}">{{range .Tags}}<li><a class="chip chip-link chip-tag" href="{{urlq "recipes.list" "q" .}}" dir="auto">#{{.}}</a></li>{{end}}</ul>{{end}}
+  {{with .PrepMinutes}}<p class="muted">{{T "recipe.prep_time" "Min" .}}</p>{{end}}
+  {{if .SourceURL}}<p class="source">{{template "icon" "link"}}{{T "recipe.found_on"}} <a href="{{.SourceURL}}" rel="noopener noreferrer nofollow" target="_blank" data-test="source-link">{{if .SourceHost}}{{.SourceHost}}{{else}}{{.SourceURL}}{{end}}</a></p>{{end}}
+</section>
+{{end}}
+{{end}}

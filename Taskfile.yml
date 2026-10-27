@@ -1,0 +1,156 @@
+version: "3"
+
+vars:
+  IMAGE: '{{.IMAGE | default "ghcr.io/<owner>/recipe-keeper"}}'
+  VERSION: '{{.VERSION | default "dev"}}'
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo unknown
+  DATE:
+    sh: date -u +%Y-%m-%dT%H:%M:%SZ
+  HTMX_VERSION: "2.0.4"
+  HTMX_SHA256: e209dda5c8235479f3166defc7750e1dbcd5a5c1808b7792fc2e6733768fb447
+  LDFLAGS: -s -w -X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X main.date={{.DATE}}
+  PLATFORMS: linux/amd64,linux/arm64
+  DEV_COMPOSE: docker compose -f deploy/dev/docker-compose.yml --env-file deploy/dev/.env
+
+tasks:
+  default:
+    cmds: [task --list]
+    silent: true
+
+  build:
+    desc: Static binary with version info
+    cmds:
+      - mkdir -p bin
+      - CGO_ENABLED=0 go build -trimpath -ldflags "{{.LDFLAGS}}" -o bin/recipes ./cmd/recipes
+
+  test:
+    desc: Unit and integration tests (race detector needs cgo)
+    env: {CGO_ENABLED: "1"}
+    cmds: [go test -race ./...]
+
+  test:e2e:
+    desc: Go end-to-end suite (in-process fake OIDC); set E2E_BASE_URL to also target a running stack
+    cmds: [go test -count=1 ./test/...]
+
+  test:cover:
+    desc: Coverage HTML to bin/coverage.html
+    cmds:
+      - mkdir -p bin
+      - go test -coverprofile=bin/coverage.out ./...
+      - go tool cover -html=bin/coverage.out -o bin/coverage.html
+
+  test:ui:
+    desc: Browser e2e (Playwright + system Chrome) and JS unit tests against the real app
+    cmds:
+      - go build -o bin/uiharness ./test/uiharness
+      - cd test/ui && npm ci --no-audit --no-fund && node --test unit/*.test.mjs && node run.mjs --real
+
+  lint:
+    desc: golangci-lint + i18n + CSP checks
+    cmds:
+      - golangci-lint run ./...
+      - task: i18n:check
+      - task: csp:check
+
+  fmt:
+    desc: gofmt (and goimports when installed)
+    cmds:
+      - gofmt -s -w .
+      - cmd: command -v goimports >/dev/null && goimports -w . || true
+
+  i18n:check:
+    cmds: [go run ./internal/i18n/cmd/i18ncheck]
+
+  csp:check:
+    desc: Templates must have no inline script, on*= handlers, style= attributes or external script/style URLs
+    cmds: [go run ./internal/tools/cspcheck]
+
+  migrate:new:
+    desc: "task migrate:new -- NAME"
+    cmds: ['goose -dir internal/db/migrations create {{.CLI_ARGS}} sql']
+
+  vendor:htmx:
+    desc: Download pinned htmx and verify its SHA-256
+    cmds:
+      - curl -fsSL https://unpkg.com/htmx.org@{{.HTMX_VERSION}}/dist/htmx.min.js -o web/static/vendor/htmx.min.js
+      - echo "{{.HTMX_SHA256}}  web/static/vendor/htmx.min.js" | sha256sum -c -
+
+  backup:
+    desc: Online backup inside the running dev container
+    cmds: ['{{.DEV_COMPOSE}} exec app /app/recipes backup']
+
+  ci:
+    desc: fmt check, lint, test, build, test:e2e
+    cmds:
+      - test -z "$(gofmt -s -l .)"
+      - task: lint
+      - task: test
+      - task: build
+      - task: test:e2e
+
+  docker:build:
+    desc: Build local single-arch image {{.IMAGE}}:{{.VERSION}}
+    cmds:
+      - docker build --build-arg VERSION={{.VERSION}} --build-arg COMMIT={{.COMMIT}} --build-arg DATE={{.DATE}} -t {{.IMAGE}}:{{.VERSION}} -t recipe-keeper:dev .
+
+  docker:release:
+    desc: Multi-arch build and push {{.IMAGE}}:{{.VERSION}} (+ X.Y and latest)
+    preconditions:
+      - sh: '[ "{{.VERSION}}" != "dev" ]'
+        msg: "Set VERSION=X.Y.Z"
+    cmds:
+      - >
+        docker buildx build --platform {{.PLATFORMS}} --push
+        --build-arg VERSION={{.VERSION}} --build-arg COMMIT={{.COMMIT}} --build-arg DATE={{.DATE}}
+        -t {{.IMAGE}}:{{.VERSION}} -t {{.IMAGE}}:{{splitList "." .VERSION | initial | join "."}} -t {{.IMAGE}}:latest .
+
+  dev:init:
+    desc: Create deploy/dev/.env from example with random secrets (idempotent)
+    status: [test -f deploy/dev/.env]
+    cmds:
+      - cp deploy/dev/.env.example deploy/dev/.env
+      - sed -i "s|^PG_PASS=.*|PG_PASS=$(openssl rand -hex 16)|" deploy/dev/.env
+      - sed -i "s|^AUTHENTIK_SECRET_KEY=.*|AUTHENTIK_SECRET_KEY=$(openssl rand -base64 60 | tr -d '\n')|" deploy/dev/.env
+
+  dev:up:
+    desc: Start app + local Authentik (http://localhost:8080, IdP http://auth.localhost:9000, users alice/alice, bob/bob)
+    deps: [dev:init]
+    cmds:
+      - '{{.DEV_COMPOSE}} up -d --build'
+
+  dev:up:mock:
+    desc: Start app with lightweight mock OIDC server
+    deps: [dev:init]
+    cmds:
+      - '{{.DEV_COMPOSE}} --profile mock up -d --build app-mock mock-oidc'
+
+  dev:run:
+    desc: Run the Go server on the host against the compose Authentik (fast reload loop)
+    cmds:
+      - '{{.DEV_COMPOSE}} up -d postgresql authentik-server authentik-worker'
+      - go run ./cmd/recipes serve
+    env:
+      APP_BASE_URL: http://localhost:8080
+      OIDC_ISSUER_URL: http://auth.localhost:9000/application/o/recipes/
+      APP_DATA_DIR: ./dev-data
+      APP_ENV: development
+      APP_TEMPLATES_DIR: ./web
+      TMPDIR: ./dev-data/tmp
+      LOG_FORMAT: text
+    dotenv: [deploy/dev/.env]
+
+  dev:logs:
+    cmds: ['{{.DEV_COMPOSE}} logs -f --tail=100 {{.CLI_ARGS}}']
+
+  dev:down:
+    cmds: ['{{.DEV_COMPOSE}} --profile mock down']
+
+  dev:reset:
+    desc: Destroy dev containers AND volumes (app data + Authentik DB)
+    prompt: This deletes all local dev data. Continue?
+    cmds: ['{{.DEV_COMPOSE}} --profile mock down -v']
+
+  dev:backup:
+    desc: Take an online backup inside the dev app container
+    cmds: ['{{.DEV_COMPOSE}} exec app /app/recipes backup']

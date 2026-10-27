@@ -1,0 +1,61 @@
+PHASE 0 IS DONE (package A). The UI engineer can start.
+
+START THE HARNESS (fixtures mode, no database, no OIDC, any session)
+    cd /home/lior/Projects/cooking
+    go run ./test/uiharness -fixtures -web ./web
+  - `-web ./web` reads templates/ and static/ from disk on EVERY request (edit, refresh, no rebuild) and locales from
+    ./locales (re-read only at start; restart after editing ui.*.toml). Without -web the embedded copies are used.
+  - Prints ONE JSON line on stdout: {baseURL, mode:"fixtures", users:{alice,bob,admin:{id,cookieName,cookieValue}},
+    recipes:{ribs,chicken,hebrew,ownerless,bread,noStages,bobPrivate,inbox1,inbox2}}. Logs go to stderr. `-addr host:port` to pin a port.
+  - Default user = alice (no cookie needed). Switch with `?as=bob|admin|none` (sets cookie nwr_session=fx-<name>; `none` = signed out ->
+    303 /signin?return_to=...). Language: `?lang=he|en` (sets the `lang` cookie). Admin pages need `?as=admin`.
+  - Same JSON line format will be produced by the DB-backed mode (`go run ./test/uiharness`, no flag) after Phase 2.
+  - Real security headers are applied (exact CSP from 20 §8), so inline script/style/handlers show as CSP violations.
+
+FIXTURE BEHAVIOUR WORTH KNOWING
+  - Recipes: fx-ribs (alice private; smoker+max roast, 2 photos, timers, cook logs), fx-chicken (alice shared; Gourmet Roast, logs incl. photo by bob),
+    fx-pizza-he (bob shared, Hebrew, pizza artisan), fx-ownerless (shared, broil, language und), fx-bread (alice private), fx-nostage (alice private,
+    no oven stages), fx-bob-private (bob private -> 404 for alice), fx-inbox-1/2 (alice inbox). Every /media/* URL returns a placeholder JPEG.
+  - /recipes pages 4 results at a time (so "Show more" is exercised). State (favourite, share switch, cook logs) is kept in memory.
+  - Editor submit uses the REAL oven validation. Title "conflict" => 409 (fragment `conflict` for Accept: application/json, error page otherwise).
+    JSON submit success => 200 {"id","url","version"}; validation failure => 422 `recipe_form` fragment (or full page for non-fetch).
+  - POST /recipes/{id}/images with form field fail=1 => 415 `upload_error` fragment. Cook-log POST with photo_fail=1 (htmx) => section with PhotoFailed.
+
+TEMPLATE FILES THE RENDERER LOOKS FOR (web/templates/)
+  layout.html                    executed as template "layout.html"; calls {{template "content" .}}; may use {{block "head" .}}{{end}} / {{block "scripts" .}}{{end}}
+  partials/*.html                all parsed into every set (so fragments can be rendered stand-alone)
+  pages/{home,recipes_list,recipe_view,cook,recipe_edit,inbox_list,inbox_item,settings,tokens,admin_categories,signin,logged_out,error}.html
+                                 each defines "content" (+ optional "head"/"scripts")
+  Fragment template names (must exist in partials/ or the page file): results, favourite_button, visibility_control, cooklog_section, image_tile,
+  upload_error, recipe_form, conflict (+ includes recipe_card, oven_hero, stage_card, delete_dialog, flash, language_button, category_chips, cooklog_entry, stars).
+  A missing page file => HTTP 500 "template error: ..." in dev mode (visible in the browser).
+
+CONTRACT NOTES / ADDITIONS (all additive; see docs/contract-questions.md for the reasoning)
+  1. AMBIGUITY: Layout and RecipeBody both have Title/Lang/Dir. On RecipeView, CookView and InboxItemView, `.Title .Lang .Dir` are the
+     RECIPE's values (methods). layout.html MUST read page/UI values as `.Layout.Lang`, `.Layout.Dir`, `.Layout.Title` (works for every view model).
+  2. Layout.ClientI18n map[string]string (all js.* and oven.mode.* strings of the current language): render with
+     <script type="application/json" id="client-i18n">{{.Layout.ClientI18n}}</script>.
+  3. ImageView has an extra RecipeID (for image_tile). New funcs: add, sub, list (besides the 4.2 set). `url` errors loudly on unknown route names.
+  4. JSON key names inside <script type=application/json> blocks: #editor-config = camelCase of the Go fields: mode, recipeId, userId, draftKey,
+     version, action, signinUrl, suggestUrl, uploadUrl, orderUrl, deleteImageUrlTemplate (contains the literal `__ID__` to substitute), maxImages,
+     maxImageBytes, maxStages. #cook-config = recipeId, userId, title, servings, stages:[{position,label,totalSeconds,stage1Seconds,isGourmet,preAlert,stage2Notice}]
+     (stage2Notice is the stage-2 temperature like "140 °C"; the text around it comes from your js.* keys). #oven-spec = snake_case per contract 4.6
+     (render with {{.OvenSpec}}).
+  5. Other Go-generated values are plain strings: flash text is already localized; Layout.Title is the localized page title.
+  6. Draft key (EditorConfig.DraftKey) is the full string `nwr_draft:<userId>:<recipeId|new|inbox:<id>>`.
+  7. RecipeForm/StageForm fields are strings (input preserved); StageForm.Idx is "0".."9" or "__N__" for the <template>. Errors/Warnings maps are keyed by
+     the form field name ("title", "stage[0].temperature_c", "category", "tags", "ingredients", "steps"); `fieldID` turns it into the DOM id.
+  8. Language form: POST {{url "lang"}} with fields lang=<Layout.OtherLang> and return_to=<Layout.Path>.
+
+i18n KEYS THAT GO CODE REFERENCES AND THE UI CATALOG (ui.en.toml / ui.he.toml) MUST DEFINE
+  page titles: home.title list.title inbox.title settings.title tokens.title admin.title signin.title editor.new.title editor.edit.title editor.inbox.title
+  list filters (Go builds the active-filter chips): list.filter.smoked  list.filter.favourites  list.filter.max_time ({{.Minutes}})  list.scope.mine  list.scope.family
+  editor.save  editor.save_and_keep (EditorView.SubmitKey)
+  error.<code>.title and error.<code>.body for codes: not_found forbidden bad_request conflict too_large unsupported_media internal unavailable not_allowed
+  signin_failed signin_expired busy (ErrorView.Code)
+  js.* (served to the client via Layout.ClientI18n; {name}-style placeholders).
+  Backend-owned keys you MAY use: oven.mode.* oven.preset.* oven.pellet.* oven.accessory.* oven.frame.* unit.* time.* (time.h, time.min, time.s), flash.*,
+  err.heic (the HEIC message), err.* , issue.* (already resolved into Errors/Warnings strings), app.name, app.version.
+
+NOT YET AVAILABLE (comes in Phase 1/2): DB-backed harness, fake OIDC round trip, route crawl against your templates. If you need a view-model field or
+route that is missing, append to docs/contract-questions.md.

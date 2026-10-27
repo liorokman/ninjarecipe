@@ -1,0 +1,123 @@
+{{define "stage_card"}}{{/* dict: S StageForm, V EditorView */}}
+{{$n := .S.Idx}}{{$V := .V}}{{$p := printf "stage[%s]." $n}}
+<fieldset class="stage-edit" data-test="stage-card" data-stage-card data-idx="{{$n}}">
+  <div class="stage-edit-head">
+    <h3 class="stage-edit-title"><span class="stage-num" data-stage-num aria-hidden="true"></span> <span>{{T "editor.stage"}}</span></h3>
+    <div class="stage-edit-tools">
+      <button type="button" class="icon-btn" data-action="stage-up" aria-label="{{T "editor.stage_up"}}">{{template "icon" "up"}}</button>
+      <button type="button" class="icon-btn" data-action="stage-down" aria-label="{{T "editor.stage_down"}}">{{template "icon" "down"}}</button>
+      <button type="button" class="icon-btn" data-action="remove-stage" data-test="remove-stage" aria-label="{{T "editor.stage_remove"}}">{{template "icon" "trash"}}</button>
+    </div>
+  </div>
+
+  <div class="field" data-field="mode">
+    <label class="field-label" for="{{fieldID (print $p "mode")}}">{{T "editor.mode"}}</label>
+    <select id="{{fieldID (print $p "mode")}}" name="{{$p}}mode" data-test="stage-mode">
+      <option value=""{{if not .S.Mode}} selected{{end}} disabled>{{T "editor.mode_choose"}}</option>
+      {{range $V.Spec.Modes}}<option value="{{.Key}}"{{if eq .Key $.S.Mode}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    {{template "errs" (index $V.Errors (print $p "mode"))}}
+  </div>
+
+  <div class="field" data-field="pizza_preset">
+    <label class="field-label" for="{{fieldID (print $p "pizza_preset")}}">{{T "editor.preset"}}</label>
+    <select id="{{fieldID (print $p "pizza_preset")}}" name="{{$p}}pizza_preset">
+      {{range $V.Spec.Presets}}<option value="{{.Key}}"{{if eq .Key $.S.PizzaPreset}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    {{template "errs" (index $V.Errors (print $p "pizza_preset"))}}
+  </div>
+
+  <p class="hint hint-strong" data-only-mode="broil">{{T "recipe.hero.frame_broil"}}</p>
+
+  <div class="stage-grid">
+    <div class="field" data-field="temperature_c">
+      <label class="field-label" for="{{fieldID (print $p "temperature_c")}}"><span data-phase-label>{{T "editor.temperature"}}</span> (°C)</label>
+      <input id="{{fieldID (print $p "temperature_c")}}" name="{{$p}}temperature_c" type="number" inputmode="numeric" min="40" max="370" step="5" value="{{.S.TemperatureC}}"{{if index $V.Errors (print $p "temperature_c")}} aria-invalid="true"{{end}}>
+      <p class="hint" data-hint="temperature_c"></p>
+      {{template "errs" (index $V.Errors (print $p "temperature_c"))}}{{template "warns" (index $V.Warnings (print $p "temperature_c"))}}
+    </div>
+    <div class="field time-field" data-field="duration_seconds">
+      <span class="field-label" id="{{fieldID (print $p "duration_seconds")}}-l"><span data-phase-label>{{T "editor.time"}}</span></span>
+      <div class="hms" role="group" aria-labelledby="{{fieldID (print $p "duration_seconds")}}-l">
+        <label><input type="number" inputmode="numeric" min="0" max="99" data-hms="h" aria-label="{{T "editor.hours"}}" placeholder="0"><span>{{T "editor.h"}}</span></label>
+        <label><input type="number" inputmode="numeric" min="0" max="59" data-hms="m" aria-label="{{T "editor.minutes"}}" placeholder="0"><span>{{T "editor.m"}}</span></label>
+        <label data-secs><input type="number" inputmode="numeric" min="0" max="59" data-hms="s" aria-label="{{T "editor.seconds"}}" placeholder="0"><span>{{T "editor.s"}}</span></label>
+      </div>
+      <input type="hidden" id="{{fieldID (print $p "duration_seconds")}}" name="{{$p}}duration_seconds" value="{{.S.DurationSeconds}}">
+      <p class="hint" data-hint="duration_seconds"></p>
+      {{template "errs" (index $V.Errors (print $p "duration_seconds"))}}{{template "warns" (index $V.Warnings (print $p "duration_seconds"))}}
+    </div>
+  </div>
+
+  <div class="stage-grid" data-field-group="phase2">
+    <div class="field" data-field="temperature2_c">
+      <label class="field-label" for="{{fieldID (print $p "temperature2_c")}}">{{T "recipe.hero.phase2"}}: {{T "editor.temperature"}} (°C)</label>
+      <input id="{{fieldID (print $p "temperature2_c")}}" name="{{$p}}temperature2_c" type="number" inputmode="numeric" min="40" max="370" step="5" value="{{.S.Temperature2C}}"{{if index $V.Errors (print $p "temperature2_c")}} aria-invalid="true"{{end}}>
+      <p class="hint" data-hint="temperature2_c"></p>
+      {{template "errs" (index $V.Errors (print $p "temperature2_c"))}}{{template "warns" (index $V.Warnings (print $p "temperature2_c"))}}
+    </div>
+    <div class="field time-field" data-field="duration2_seconds">
+      <span class="field-label" id="{{fieldID (print $p "duration2_seconds")}}-l">{{T "recipe.hero.phase2"}}: {{T "editor.time"}}</span>
+      <div class="hms" role="group" aria-labelledby="{{fieldID (print $p "duration2_seconds")}}-l">
+        <label><input type="number" inputmode="numeric" min="0" max="99" data-hms="h" aria-label="{{T "editor.hours"}}" placeholder="0"><span>{{T "editor.h"}}</span></label>
+        <label><input type="number" inputmode="numeric" min="0" max="59" data-hms="m" aria-label="{{T "editor.minutes"}}" placeholder="0"><span>{{T "editor.m"}}</span></label>
+      </div>
+      <input type="hidden" id="{{fieldID (print $p "duration2_seconds")}}" name="{{$p}}duration2_seconds" value="{{.S.Duration2Seconds}}">
+      <p class="hint" data-hint="duration2_seconds"></p>
+      {{template "errs" (index $V.Errors (print $p "duration2_seconds"))}}{{template "warns" (index $V.Warnings (print $p "duration2_seconds"))}}
+    </div>
+  </div>
+
+  <div class="field switch-field" data-field="woodfire">
+    <label class="switch-row">
+      <input type="checkbox" class="switch-input" id="{{fieldID (print $p "woodfire")}}" name="{{$p}}woodfire" value="1"{{if .S.Woodfire}} checked{{end}} data-test="woodfire">
+      <span class="switch" aria-hidden="true"><span class="switch-knob"></span></span>
+      <span class="switch-label">🔥 {{T "editor.woodfire"}}</span>
+    </label>
+    <p class="hint" data-hint="woodfire"></p>
+    {{template "errs" (index $V.Errors (print $p "woodfire"))}}
+  </div>
+
+  <div class="stage-grid" data-field-group="pellets">
+    <div class="field" data-field="pellet_blend">
+      <label class="field-label" for="{{fieldID (print $p "pellet_blend")}}">{{T "editor.pellet_blend"}}</label>
+      <select id="{{fieldID (print $p "pellet_blend")}}" name="{{$p}}pellet_blend">
+        <option value="">—</option>
+        {{range $V.Spec.Blends}}<option value="{{.Key}}"{{if eq .Key $.S.PelletBlend}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+      {{template "errs" (index $V.Errors (print $p "pellet_blend"))}}
+    </div>
+    <div class="field" data-field="pellet_note">
+      <label class="field-label" for="{{fieldID (print $p "pellet_note")}}">{{T "editor.pellet_note"}}</label>
+      <input id="{{fieldID (print $p "pellet_note")}}" name="{{$p}}pellet_note" type="text" maxlength="60" dir="auto" value="{{.S.PelletNote}}" placeholder="{{T "editor.pellet_note_ph"}}">
+      {{template "errs" (index $V.Errors (print $p "pellet_note"))}}
+    </div>
+  </div>
+
+  <div class="stage-grid">
+    <div class="field" data-field="preheat_minutes">
+      <label class="field-label" for="{{fieldID (print $p "preheat_minutes")}}">{{T "editor.preheat_minutes"}}</label>
+      <input id="{{fieldID (print $p "preheat_minutes")}}" name="{{$p}}preheat_minutes" type="number" inputmode="numeric" min="0" max="120" step="1" value="{{.S.PreheatMinutes}}">
+      {{template "errs" (index $V.Errors (print $p "preheat_minutes"))}}
+    </div>
+    <div class="field" data-field="target_core_temp_c">
+      <label class="field-label" for="{{fieldID (print $p "target_core_temp_c")}}">{{T "editor.core_temp"}} (°C)</label>
+      <input id="{{fieldID (print $p "target_core_temp_c")}}" name="{{$p}}target_core_temp_c" type="number" inputmode="numeric" min="30" max="100" step="1" value="{{.S.TargetCoreTempC}}">
+      {{template "errs" (index $V.Errors (print $p "target_core_temp_c"))}}
+    </div>
+  </div>
+
+  <fieldset class="field accessories" data-field="accessories">
+    <legend class="field-label">{{T "editor.accessories"}}</legend>
+    <div class="chips">
+      {{range $V.Spec.Accessories}}<label class="chip"><input type="checkbox" name="{{$p}}accessories" value="{{.Key}}"{{if contains $.S.Accessories .Key}} checked{{end}}><span>{{.Label}}</span></label>{{end}}
+    </div>
+    {{template "errs" (index $V.Errors (print $p "accessories"))}}
+  </fieldset>
+
+  <div class="field" data-field="notes">
+    <label class="field-label" for="{{fieldID (print $p "notes")}}">{{T "editor.stage_notes"}}</label>
+    <textarea id="{{fieldID (print $p "notes")}}" name="{{$p}}notes" rows="2" maxlength="500" dir="auto" placeholder="{{T "editor.stage_notes_ph"}}">{{.S.Notes}}</textarea>
+    {{template "errs" (index $V.Errors (print $p "notes"))}}
+  </div>
+</fieldset>{{end}}

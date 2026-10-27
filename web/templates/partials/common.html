@@ -1,0 +1,35 @@
+{{define "language_button"}}<form class="lang-form" method="post" action="{{url "lang"}}">
+  <input type="hidden" name="lang" value="{{.Layout.OtherLang}}">
+  <input type="hidden" name="return_to" value="{{.Layout.Path}}">
+  <button type="submit" class="menu-item lang-btn" data-test="lang-switch" lang="{{.Layout.OtherLang}}" dir="{{if eq .Layout.OtherLang "he"}}rtl{{else}}ltr{{end}}">{{template "icon" "globe"}}<span>{{.Layout.OtherLangNative}}</span></button>
+</form>{{end}}
+
+{{define "flash"}}<div class="flash flash-{{.Kind}}" role="{{if eq .Kind "error"}}alert{{else}}status{{end}}" data-test="flash">
+  <span class="flash-text">{{.Text}}</span>
+  <button type="button" class="icon-btn" data-action="dismiss-flash" aria-label="{{T "common.close"}}">{{template "icon" "x"}}</button>
+</div>{{end}}
+
+{{define "stars"}}{{/* arg: rating int */}}<span class="stars" role="img" aria-label="{{T "recipe.stars" "Count" (deref .)}}">{{range stars .}}{{if .}}{{template "icon" "star-fill"}}{{else}}{{template "icon" "star"}}{{end}}{{end}}</span>{{end}}
+
+{{define "visibility_badge"}}{{if eq . "shared"}}<span class="badge badge-family" data-test="visibility-badge">{{T "recipe.family"}} 👨‍👩‍👧</span>{{else}}<span class="badge badge-private" data-test="visibility-badge">{{T "recipe.just_me"}} 🔒</span>{{end}}{{end}}
+
+{{define "category_chips"}}{{range .}}<label class="chip"><input type="checkbox" name="category" value="{{.Slug}}"{{if .Selected}} checked{{end}}><span>{{.Icon}} {{.Name}}</span></label>{{end}}{{end}}
+
+{{define "delete_dialog"}}<dialog id="delete-dialog" class="dialog" aria-labelledby="delete-title" data-test="delete-dialog">
+  <div class="dialog-body">
+    <h2 id="delete-title">{{T "delete.title" "Title" .Title}}</h2>
+    <p>{{T "delete.body"}}</p>
+    {{if .Shared}}<p class="strong">{{T "delete.family"}}</p>{{end}}
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-primary btn-lg" data-action="close-dialog" autofocus data-test="delete-keep">{{T "delete.keep"}}</button>
+      <form method="post" action="{{.Action}}" data-test="delete-form">
+        <button type="submit" class="btn btn-danger btn-lg" data-test="delete-confirm">{{T "delete.confirm"}}</button>
+      </form>
+    </div>
+  </div>
+</dialog>{{end}}
+
+{{define "lightbox"}}<dialog id="lightbox" class="dialog lightbox" aria-label="{{T "recipe.photos"}}">
+  <button type="button" class="icon-btn lightbox-close" data-action="close-dialog" aria-label="{{T "common.close"}}">{{template "icon" "x"}}</button>
+  <img id="lightbox-img" alt="">
+</dialog>{{end}}

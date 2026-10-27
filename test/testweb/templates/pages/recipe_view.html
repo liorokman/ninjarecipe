@@ -1,0 +1,12 @@
+{{define "content"}}<h1 lang="{{.Lang}}" dir="{{.Dir}}">{{.Title}}</h1><span data-test="visibility-badge">{{.RecipeBody.Visibility}}</span>
+{{range .Stages}}<div data-test="stage-card">{{.Mode}} {{with .TemperatureC}}{{.}}{{end}} {{.TotalSeconds}}</div>{{end}}
+<a data-test="start-cooking" href="{{url "recipe.cook" .ID}}">cook</a>
+{{template "body" .RecipeBody}}
+{{if .CanEdit}}<a data-test="edit-link" href="{{url "recipe.edit" .ID}}">edit</a>{{end}}
+{{if .CanDelete}}<form data-test="delete-form" method="post" action="{{url "recipe.delete" .ID}}"><button data-test="delete-open">delete</button></form>{{end}}
+{{if .CanChangeVisibility}}<div id="visibility-control">{{template "visibility_control" .Visibility}}</div>{{end}}
+{{if .ShowCopy}}<form data-test="copy-form" method="post" action="{{url "recipe.copy" .ID}}"><button>copy</button></form>{{end}}
+{{if .CanFavourite}}{{template "favourite_button" .FavouriteState}}{{end}}
+{{template "cooklog_section" .Logs}}
+{{with .LastChanged}}<p data-test="last-changed">{{.ByName}}</p>{{end}}
+<span data-test="share-link">{{.ShareURL}}</span>{{end}}

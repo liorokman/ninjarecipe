@@ -1,0 +1,28 @@
+{{define "content"}}
+<div class="page editor-page">
+  <h1 class="page-title">{{if eq .Mode "new"}}{{T "editor.title_new"}}{{else if eq .Mode "inbox"}}{{T "editor.title_inbox"}}{{else}}{{T "editor.title_edit"}}{{end}}</h1>
+  <div id="draft-banner" class="draft-banner" role="status" data-test="draft-banner" hidden>
+    <p class="draft-text"></p>
+    <p class="draft-warn" hidden></p>
+    <div class="draft-actions">
+      <button type="button" class="btn btn-primary" data-action="draft-continue" data-test="draft-continue">{{T "editor.draft_continue_btn"}}</button>
+      <button type="button" class="btn btn-secondary" data-action="draft-discard" data-test="draft-discard">{{T "editor.draft_discard"}}</button>
+    </div>
+  </div>
+  <div id="offline-banner" class="flash flash-warning" role="status" data-test="offline-banner" hidden>
+    <span>{{T "editor.offline"}}</span>
+    <button type="button" class="btn btn-secondary btn-sm" data-action="save-retry">{{T "editor.try_again"}}</button>
+  </div>
+  <div id="conflict-slot"></div>
+  {{template "recipe_form" .}}
+  {{if and .CanDelete (eq .Mode "edit")}}
+  <div class="danger-zone">
+    <button type="button" class="btn btn-danger btn-lg" data-action="open-dialog" data-target="delete-dialog" data-test="delete-open">{{template "icon" "trash"}}{{T "recipe.delete"}}</button>
+  </div>
+  {{template "delete_dialog" .Delete}}
+  {{end}}
+</div>
+<script type="application/json" id="editor-config">{{.Config}}</script>
+<script type="application/json" id="oven-spec">{{.OvenSpec}}</script>
+{{end}}
+{{define "scripts"}}<script type="module" src="{{asset "js/editor.js"}}"></script>{{end}}

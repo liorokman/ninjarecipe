@@ -1,0 +1,55 @@
+{
+  "services": {
+    "recipes": {
+      "image": "ghcr.io/<owner>/recipe-keeper:1.0.0",
+      "container_name": "recipes",
+      "restart": "unless-stopped",
+      "read_only": true,
+      "environment": [
+        "APP_BASE_URL=https://recipes.<domain>",
+        "OIDC_ISSUER_URL=https://auth.<domain>/application/o/recipes/",
+        "OIDC_CLIENT_ID=<from-authentik>",
+        "OIDC_CLIENT_SECRET=<from-authentik>",
+        "OIDC_ALLOWED_GROUPS=recipes-users,recipes-admins",
+        "OIDC_ADMIN_GROUP=recipes-admins",
+        "APP_TRUSTED_PROXIES=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16",
+        "BACKUP_AT=03:30",
+        "BACKUP_KEEP=7",
+        "GOMEMLIMIT=300MiB",
+        "TZ=Asia/Jerusalem"
+      ],
+      "labels": {
+        "cosmos-force-network-secured": "true",
+        "cosmos-auto-update": "false",
+        "cosmos-icon": "https://recipes.<domain>/icon-192.png"
+      },
+      "volumes": [
+        { "type": "bind", "source": "/srv/recipes/data", "target": "/data" }
+      ],
+      "deploy": { "resources": { "limits": { "cpus": "1.0", "memory": "384M" } } },
+      "routes": [
+        {
+          "Name": "recipes",
+          "Description": "Ninja Woodfire Recipe Keeper",
+          "UseHost": true,
+          "Host": "recipes.<domain>",
+          "UsePathPrefix": false,
+          "Target": "http://recipes:8080",
+          "Mode": "SERVAPP",
+          "AuthEnabled": false,
+          "AdminOnly": false,
+          "SmartShield": { "Enabled": true },
+          "BlockCommonBots": true,
+          "BlockAPIAbuse": false,
+          "Timeout": 120000,
+          "ThrottlePerMinute": 3000,
+          "MaxBandwidth": 0,
+          "CORSOrigin": "",
+          "VerboseForwardHeader": false,
+          "DisableHeaderHardening": false
+        }
+      ]
+    }
+  },
+  "volumes": {}
+}

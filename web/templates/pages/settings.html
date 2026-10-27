@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="page narrow settings">
+  <h1 class="page-title">{{T "settings.title"}}</h1>
+  <ul class="menu-list card-list">
+    <li>{{template "language_button" .}}</li>
+    <li><button type="button" class="menu-item" data-action="theme-toggle" data-test="theme-toggle"><span class="theme-icons">{{template "icon" "sun"}}{{template "icon" "moon"}}</span><span>{{T "nav.theme"}}</span><span class="menu-value" data-theme-label></span></button></li>
+    <li><a class="menu-item" href="{{url "tokens.list"}}">{{template "icon" "key"}}<span>{{T "settings.assistant"}}</span>{{template "icon_dir" "chevron"}}</a></li>
+    {{if .Layout.User.IsAdmin}}<li><a class="menu-item" href="{{url "admin.categories"}}">{{template "icon" "list"}}<span>{{T "nav.categories"}}</span>{{template "icon_dir" "chevron"}}</a></li>{{end}}
+  </ul>
+  <p class="muted version" data-test="version">{{T "settings.version"}} <bdi>{{.Version}}</bdi>{{if .Commit}} · <bdi>{{.Commit}}</bdi>{{end}}{{if .BuildDate}} · <bdi>{{.BuildDate}}</bdi>{{end}}</p>
+  <form method="post" action="{{url "auth.logout"}}" data-action="sign-out" class="signout-form">
+    <button type="submit" class="btn btn-danger btn-lg" data-test="signout">{{T "nav.sign_out"}}</button>
+  </form>
+</div>
+{{end}}

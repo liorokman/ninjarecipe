@@ -1,0 +1,13 @@
+{
+  "name": "cooking-ui-tests",
+  "private": true,
+  "type": "module",
+  "description": "Browser e2e and pure-logic unit tests for the web UI (test tooling only, not part of the product build)",
+  "scripts": {
+    "test:unit": "node --test unit/*.test.mjs",
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

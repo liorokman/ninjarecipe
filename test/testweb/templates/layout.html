@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="{{.Layout.Lang}}" dir="{{.Layout.Dir}}">
+<head>
+<meta charset="utf-8">
+<title>{{.Layout.Title}}</title>
+<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false}'>
+<link rel="manifest" href="{{url "manifest"}}">
+<script src="{{asset "js/theme-init.js"}}"></script>
+</head>
+<body data-user-id="{{with .Layout.User}}{{.ID}}{{end}}">
+<nav>
+<a href="{{url "home"}}">home</a>
+<a href="{{url "recipes.list"}}">search</a>
+<a href="{{url "recipe.new"}}">add</a>
+<a href="{{url "inbox.list"}}">inbox{{if .Layout.InboxCount}} <span data-test="inbox-badge">{{.Layout.InboxCount}}</span>{{end}}</a>
+<a href="{{url "settings"}}">menu</a>
+<form method="post" action="{{url "lang"}}"><input type="hidden" name="lang" value="{{.Layout.OtherLang}}"><input type="hidden" name="return_to" value="{{.Layout.Path}}"><button data-test="lang-switch">{{.Layout.OtherLangNative}}</button></form>
+{{with .Layout.User}}<form method="post" action="{{url "auth.logout"}}" data-action="sign-out"><button data-test="signout">out</button></form>{{end}}
+</nav>
+{{with .Layout.Flash}}<div id="flash" role="status">{{.Text}}</div>{{end}}
+<main>{{template "content" .}}</main>
+<script type="application/json" id="client-i18n">{{.Layout.ClientI18n}}</script>
+<script src="{{asset "js/app.js"}}"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+{{define "content"}}<h1>{{.Title}}</h1><script type="application/json" id="cook-config">{{.Config}}</script>{{template "body" .RecipeBody}}<a data-test="back" href="{{url "recipe.view" .ID}}">done</a>{{end}}

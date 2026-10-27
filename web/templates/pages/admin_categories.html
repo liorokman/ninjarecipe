@@ -1,0 +1,41 @@
+{{define "content"}}
+<div class="page admin">
+  <h1 class="page-title">{{T "admin.title"}}</h1>
+  <ul class="admin-list" data-test="admin-categories">
+    {{range .Items}}
+    <li class="admin-row">
+      <form method="post" action="{{url "admin.category.update" .ID}}" class="admin-form" data-test="category-form">
+        <label class="field icon-field"><span class="field-label">{{T "admin.icon"}}</span><input name="icon" value="{{.Icon}}" maxlength="8" aria-label="{{T "admin.icon"}}"></label>
+        <label class="field"><span class="field-label">{{T "admin.name_en"}}</span><input name="name" value="{{.Name}}" dir="ltr" required maxlength="60"></label>
+        <label class="field"><span class="field-label">{{T "admin.name_he"}}</span><input name="name_he" value="{{.NameHe}}" dir="rtl" required maxlength="60"></label>
+        <label class="field num-field"><span class="field-label">{{T "admin.order"}}</span><input name="sort_order" type="number" value="{{.SortOrder}}" inputmode="numeric"></label>
+        <span class="muted count"><bdi>{{.RecipeCount}}</bdi> {{T "admin.recipes"}}</span>
+        <button type="submit" class="btn btn-secondary">{{T "common.save"}}</button>
+        <button type="button" class="btn btn-danger" data-action="open-dialog" data-target="del-cat-{{.ID}}">{{template "icon" "trash"}}<span class="sr-only">{{T "admin.delete"}}</span></button>
+      </form>
+      <dialog id="del-cat-{{.ID}}" class="dialog" aria-labelledby="del-cat-t-{{.ID}}">
+        <div class="dialog-body">
+          <h2 id="del-cat-t-{{.ID}}">{{T "admin.delete_title" "Name" .Name}}</h2>
+          <p>{{T "admin.delete_body" "Count" .RecipeCount}}</p>
+          <div class="dialog-actions">
+            <button type="button" class="btn btn-primary btn-lg" data-action="close-dialog" autofocus>{{T "delete.keep"}}</button>
+            <form method="post" action="{{url "admin.category.delete" .ID}}"><button type="submit" class="btn btn-danger btn-lg">{{T "admin.delete"}}</button></form>
+          </div>
+        </div>
+      </dialog>
+    </li>
+    {{end}}
+  </ul>
+  <section class="block">
+    <h2 class="block-title">{{T "admin.add"}}</h2>
+    <form method="post" action="{{url "admin.categories"}}" class="admin-form" data-test="category-add">
+      <label class="field icon-field"><span class="field-label">{{T "admin.icon"}}</span><input name="icon" maxlength="8" placeholder="🍖"></label>
+      <label class="field"><span class="field-label">{{T "admin.slug"}}</span><input name="slug" dir="ltr" required maxlength="40" pattern="[a-z0-9_-]+">{{with index .FormErrors "slug"}}<span class="field-error" role="alert">{{.}}</span>{{end}}</label>
+      <label class="field"><span class="field-label">{{T "admin.name_en"}}</span><input name="name" dir="ltr" required maxlength="60"></label>
+      <label class="field"><span class="field-label">{{T "admin.name_he"}}</span><input name="name_he" dir="rtl" required maxlength="60"></label>
+      <label class="field num-field"><span class="field-label">{{T "admin.order"}}</span><input name="sort_order" type="number" inputmode="numeric" value="100"></label>
+      <button type="submit" class="btn btn-primary">{{template "icon" "plus"}}{{T "admin.add"}}</button>
+    </form>
+  </section>
+</div>
+{{end}}

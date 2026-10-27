@@ -1,0 +1,46 @@
+{{define "content"}}
+<div class="page list">
+  <h1 class="page-title">{{T "list.title"}}</h1>
+  <form id="filters" class="filters" action="{{url "recipes.list"}}" method="get" role="search">
+    <div class="searchbar">
+      {{template "icon" "search"}}
+      <input type="search" name="q" value="{{.Q}}" dir="auto" autocomplete="off" placeholder="{{T "search.placeholder"}}" aria-label="{{T "search.label"}}" data-test="search-input"
+             hx-get="{{url "recipes.list"}}" hx-trigger="input changed delay:300ms, search" hx-target="#results" hx-include="#filters" hx-push-url="true" hx-indicator="#search-spinner">
+      <span id="search-spinner" class="spinner htmx-indicator" role="status" aria-label="{{T "common.loading"}}"></span>
+      <button type="submit" class="btn btn-primary no-js-only">{{T "search.go"}}</button>
+    </div>
+
+    <details class="filter-panel"{{if .HasFilters}} open{{end}}>
+      <summary class="btn btn-secondary">{{template "icon" "list"}}{{T "list.filters"}}{{if .Active}} <span class="badge-count static">{{len .Active}}</span>{{end}}</summary>
+      <div class="filter-groups">
+        <fieldset class="filter-group"><legend>{{T "list.categories"}}</legend>
+          <div class="chips">{{range .Categories}}<label class="chip"><input type="checkbox" name="category" value="{{.Slug}}"{{if .Selected}} checked{{end}} hx-get="{{url "recipes.list"}}" hx-trigger="change" hx-target="#results" hx-include="#filters" hx-push-url="true"><span>{{.Icon}} {{.Name}}</span></label>{{end}}</div></fieldset>
+        <fieldset class="filter-group"><legend>{{T "list.oven_mode"}}</legend>
+          <div class="chips">{{range .Modes}}<label class="chip"><input type="checkbox" name="mode" value="{{.Key}}"{{if .Selected}} checked{{end}} hx-get="{{url "recipes.list"}}" hx-trigger="change" hx-target="#results" hx-include="#filters" hx-push-url="true"><span>{{T (printf "oven.mode.%s" .Key)}}</span></label>{{end}}</div></fieldset>
+        <fieldset class="filter-group"><legend>{{T "list.more_filters"}}</legend>
+          <div class="chips">
+            <label class="chip"><input type="checkbox" name="smoked" value="1"{{if .Smoked}} checked{{end}} hx-get="{{url "recipes.list"}}" hx-trigger="change" hx-target="#results" hx-include="#filters" hx-push-url="true"><span>🔥 {{T "home.smoked"}}</span></label>
+            <label class="chip"><input type="checkbox" name="fav" value="1"{{if .Fav}} checked{{end}} hx-get="{{url "recipes.list"}}" hx-trigger="change" hx-target="#results" hx-include="#filters" hx-push-url="true"><span>♥ {{T "recipe.favourites"}}</span></label>
+          </div></fieldset>
+        <fieldset class="filter-group"><legend>{{T "list.scope"}}</legend>
+          <div class="chips">
+            {{template "scope_chip" (dict "K" "all" "Cur" .Scope)}}{{template "scope_chip" (dict "K" "mine" "Cur" .Scope)}}{{template "scope_chip" (dict "K" "family" "Cur" .Scope)}}
+          </div></fieldset>
+        <label class="field sort-field"><span class="field-label">{{T "list.sort"}}</span>
+          <select name="sort" hx-get="{{url "recipes.list"}}" hx-trigger="change" hx-target="#results" hx-include="#filters" hx-push-url="true" data-test="sort-select">
+            {{range .SortOptions}}<option value="{{.Key}}"{{if .Selected}} selected{{end}}>{{T (printf "list.sort_%s" .Key)}}</option>{{end}}
+          </select></label>
+      </div>
+    </details>
+  </form>
+
+  <div class="active-filters" data-test="active-filters">
+    {{range .Active}}<a class="chip chip-active" href="{{.RemoveURL}}" aria-label="{{T "list.remove_filter" "Label" .Label}}">{{.Label}} {{template "icon" "x"}}</a>{{end}}
+    {{if .HasFilters}}<a class="btn btn-quiet btn-sm" href="{{url "recipes.list"}}" data-test="filters-clear">{{T "list.clear"}}</a>{{end}}
+  </div>
+
+  <div id="results" aria-live="polite" data-test="results">{{template "results" .Results}}</div>
+</div>
+{{end}}
+
+{{define "scope_chip"}}<label class="chip"><input type="radio" name="scope" value="{{.K}}"{{if eq .Cur .K}} checked{{else if and (eq .Cur "") (eq .K "all")}} checked{{end}} hx-get="{{url "recipes.list"}}" hx-trigger="change" hx-target="#results" hx-include="#filters" hx-push-url="true"><span>{{T (printf "list.scope_%s" .K)}}</span></label>{{end}}
