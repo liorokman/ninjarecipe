@@ -1,18 +1,18 @@
 {
   "services": {
     "recipes": {
-      "image": "ghcr.io/<owner>/recipe-keeper:1.0.0",
+      "image": "ghcr.io/liorokman/ninjarecipe:1.0.0",
       "container_name": "recipes",
       "restart": "unless-stopped",
       "read_only": true,
       "environment": [
-        "APP_BASE_URL=https://recipes.<domain>",
-        "OIDC_ISSUER_URL=https://auth.<domain>/application/o/recipes/",
-        "OIDC_CLIENT_ID=<from-authentik>",
-        "OIDC_CLIENT_SECRET=<from-authentik>",
+        "APP_BASE_URL=<APP_BASE_URL>",
+        "OIDC_ISSUER_URL=<OIDC_ISSUER_URL>",
+        "OIDC_CLIENT_ID=<OIDC_CLIENT_ID>",
+        "OIDC_CLIENT_SECRET=<OIDC_CLIENT_SECRET>",
         "OIDC_ALLOWED_GROUPS=recipes-users,recipes-admins",
         "OIDC_ADMIN_GROUP=recipes-admins",
-        "APP_TRUSTED_PROXIES=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16",
+        "APP_TRUSTED_PROXIES=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16,127.0.0.1/8",
         "BACKUP_AT=03:30",
         "BACKUP_KEEP=7",
         "GOMEMLIMIT=300MiB",
@@ -24,9 +24,20 @@
         "cosmos-icon": "https://recipes.<domain>/icon-192.png"
       },
       "volumes": [
-        { "type": "bind", "source": "/srv/recipes/data", "target": "/data" }
+        {
+          "type": "volume",
+          "source": "recipes-data",
+          "target": "/data"
+        }
       ],
-      "deploy": { "resources": { "limits": { "cpus": "1.0", "memory": "384M" } } },
+      "deploy": {
+        "resources": {
+          "limits": {
+            "cpus": "1.0",
+            "memory": "384M"
+          }
+        }
+      },
       "routes": [
         {
           "Name": "recipes",
@@ -38,7 +49,9 @@
           "Mode": "SERVAPP",
           "AuthEnabled": false,
           "AdminOnly": false,
-          "SmartShield": { "Enabled": true },
+          "SmartShield": {
+            "Enabled": true
+          },
           "BlockCommonBots": true,
           "BlockAPIAbuse": false,
           "Timeout": 120000,
@@ -51,5 +64,7 @@
       ]
     }
   },
-  "volumes": {}
+  "volumes": {
+    "recipes-data": {}
+  }
 }
