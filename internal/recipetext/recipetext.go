@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 var unitAliases = map[string][]string{

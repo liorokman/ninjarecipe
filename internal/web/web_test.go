@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"cooking/internal/domain"
-	"cooking/internal/i18n"
-	"cooking/internal/reqctx"
-	"cooking/internal/web/fixtures"
-	"cooking/locales"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/reqctx"
+	"github.com/liorokman/ninjarecipe/internal/web/fixtures"
+	"github.com/liorokman/ninjarecipe/locales"
 )
 
 func TestRouteTable(t *testing.T) {

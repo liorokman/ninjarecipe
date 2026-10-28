@@ -8,14 +8,14 @@ import (
 	"strconv"
 	"strings"
 
-	"cooking/internal/domain"
-	"cooking/internal/httpx"
-	"cooking/internal/i18n"
-	"cooking/internal/oven"
-	"cooking/internal/reqctx"
-	"cooking/internal/service"
-	"cooking/internal/store"
-	"cooking/internal/web"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/httpx"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/oven"
+	"github.com/liorokman/ninjarecipe/internal/reqctx"
+	"github.com/liorokman/ninjarecipe/internal/service"
+	"github.com/liorokman/ninjarecipe/internal/store"
+	"github.com/liorokman/ninjarecipe/internal/web"
 )
 
 // API holds the dependencies of the JSON handlers.

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 const recipeSelect = `SELECT r.id, COALESCE(r.owner_id,''), r.status, r.visibility, r.title, r.description, r.notes, r.language,

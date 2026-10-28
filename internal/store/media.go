@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 const imgCols = `id, recipe_id, storage_key, kind, COALESCE(position,0), width, height, bytes, COALESCE(caption,''), COALESCE(source_url,''), created_at`

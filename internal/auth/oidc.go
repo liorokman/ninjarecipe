@@ -13,7 +13,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
-	"cooking/internal/config"
+	"github.com/liorokman/ninjarecipe/internal/config"
 )
 
 // ErrUnavailable means OIDC discovery has not succeeded yet.

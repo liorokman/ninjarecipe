@@ -2,11 +2,11 @@ package store
 
 import (
 	"context"
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 	"errors"
 	"strings"
 
-	"cooking/internal/textnorm"
+	"github.com/liorokman/ninjarecipe/internal/textnorm"
 )
 
 // ReindexRecipe rebuilds the FTS row of an active recipe (and removes it for inbox items / missing recipes).

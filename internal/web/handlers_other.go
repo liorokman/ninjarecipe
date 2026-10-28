@@ -16,11 +16,11 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"cooking/internal/auth"
-	"cooking/internal/domain"
-	"cooking/internal/httpx"
-	"cooking/internal/reqctx"
-	"cooking/internal/service"
+	"github.com/liorokman/ninjarecipe/internal/auth"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/httpx"
+	"github.com/liorokman/ninjarecipe/internal/reqctx"
+	"github.com/liorokman/ninjarecipe/internal/service"
 )
 
 // ---- inbox ----

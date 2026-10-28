@@ -1,10 +1,10 @@
 package api
 
 import (
-	"cooking/internal/domain"
-	"cooking/internal/oven"
-	"cooking/internal/store"
-	"cooking/internal/web"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/oven"
+	"github.com/liorokman/ninjarecipe/internal/store"
+	"github.com/liorokman/ninjarecipe/internal/web"
 )
 
 type UserRef struct {

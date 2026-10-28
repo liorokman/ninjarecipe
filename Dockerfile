@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 
 FROM gcr.io/distroless/static-debian12:nonroot
 LABEL org.opencontainers.image.title="ninja-woodfire-recipe-keeper" \
-      org.opencontainers.image.source="https://github.com/<owner>/<repo>"
+      org.opencontainers.image.source="https://github.com/liorokman/ninjarecipe"
 COPY --from=build /out/recipes /app/recipes
 COPY --from=build --chown=65532:65532 /out/data /data
 ENV APP_LISTEN_ADDR=":8080" \

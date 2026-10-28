@@ -11,15 +11,15 @@ import (
 	"sync"
 	"time"
 
-	"cooking/internal/authz"
-	"cooking/internal/domain"
-	"cooking/internal/i18n"
-	"cooking/internal/images"
-	"cooking/internal/oven"
-	"cooking/internal/recipetext"
-	"cooking/internal/reqctx"
-	"cooking/internal/web"
-	"cooking/internal/web/fixtures"
+	"github.com/liorokman/ninjarecipe/internal/authz"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/images"
+	"github.com/liorokman/ninjarecipe/internal/oven"
+	"github.com/liorokman/ninjarecipe/internal/recipetext"
+	"github.com/liorokman/ninjarecipe/internal/reqctx"
+	"github.com/liorokman/ninjarecipe/internal/web"
+	"github.com/liorokman/ninjarecipe/internal/web/fixtures"
 )
 
 // fxServer serves every route with canned data (no database). State changes live in memory.

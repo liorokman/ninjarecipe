@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"cooking/internal/db"
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/db"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 func open(t *testing.T) (*Store, *db.DB) {

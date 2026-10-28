@@ -18,7 +18,7 @@ import (
 	"golang.org/x/image/draw"
 	"golang.org/x/image/webp"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 // Processed holds the two JPEG variants.

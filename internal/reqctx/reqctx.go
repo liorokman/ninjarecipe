@@ -4,8 +4,8 @@ package reqctx
 import (
 	"context"
 
-	"cooking/internal/domain"
-	"cooking/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
 )
 
 type key int

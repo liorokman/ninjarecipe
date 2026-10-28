@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 // Querier is satisfied by *sql.DB and *sql.Tx.

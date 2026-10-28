@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"cooking/internal/authz"
-	"cooking/internal/domain"
-	"cooking/internal/i18n"
-	"cooking/internal/oven"
+	"github.com/liorokman/ninjarecipe/internal/authz"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/oven"
 )
 
 // VB builds view-model parts from domain objects. It is shared by the real handlers and the fixtures.

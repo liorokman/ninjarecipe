@@ -1,7 +1,7 @@
 // Package authz holds the pure authorization predicates of spec 20 §7.
 package authz
 
-import "cooking/internal/domain"
+import "github.com/liorokman/ninjarecipe/internal/domain"
 
 func isOwner(u *domain.User, r *domain.Recipe) bool {
 	return u != nil && r.OwnerID != "" && r.OwnerID == u.ID

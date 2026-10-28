@@ -10,8 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"cooking/locales"
-	"cooking/test/harness"
+	"github.com/liorokman/ninjarecipe/locales"
+	"github.com/liorokman/ninjarecipe/test/harness"
 )
 
 // runReal starts the real application (SQLite in a temp dir, fake OIDC provider, seeded data) and blocks.

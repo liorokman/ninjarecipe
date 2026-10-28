@@ -3,7 +3,7 @@ package authz
 import (
 	"testing"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 func TestPredicateMatrix(t *testing.T) {

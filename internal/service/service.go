@@ -9,12 +9,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"cooking/internal/domain"
-	"cooking/internal/events"
-	"cooking/internal/images"
-	"cooking/internal/oven"
-	"cooking/internal/recipetext"
-	"cooking/internal/store"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/events"
+	"github.com/liorokman/ninjarecipe/internal/images"
+	"github.com/liorokman/ninjarecipe/internal/oven"
+	"github.com/liorokman/ninjarecipe/internal/recipetext"
+	"github.com/liorokman/ninjarecipe/internal/store"
 )
 
 // Service is the application layer.

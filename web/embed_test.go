@@ -4,7 +4,7 @@ import (
 	"io/fs"
 	"testing"
 
-	"cooking/web"
+	"github.com/liorokman/ninjarecipe/web"
 )
 
 func TestEmbeddedWebAssets(t *testing.T) {

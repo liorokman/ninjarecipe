@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"cooking/internal/db"
-	"cooking/internal/domain"
-	"cooking/internal/service"
+	"github.com/liorokman/ninjarecipe/internal/db"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/service"
 )
 
 // Backup writes one snapshot (VACUUM INTO + integrity_check + media key list) and prunes beyond keep.

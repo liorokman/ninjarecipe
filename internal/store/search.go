@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"cooking/internal/domain"
-	"cooking/internal/oven"
-	"cooking/internal/textnorm"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/oven"
+	"github.com/liorokman/ninjarecipe/internal/textnorm"
 )
 
 const defaultPage = 24

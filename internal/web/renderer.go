@@ -14,10 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"cooking/internal/domain"
-	"cooking/internal/httpx"
-	"cooking/internal/i18n"
-	"cooking/internal/reqctx"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/httpx"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/reqctx"
 )
 
 // RendererOpts configures the template renderer.

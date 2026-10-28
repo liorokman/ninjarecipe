@@ -1,6 +1,6 @@
 package oven
 
-import "cooking/internal/domain"
+import "github.com/liorokman/ninjarecipe/internal/domain"
 
 func val(p *int) int {
 	if p == nil {

@@ -15,11 +15,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"cooking/internal/app"
-	"cooking/internal/auth"
-	"cooking/internal/config"
-	"cooking/internal/domain"
-	"cooking/internal/service"
+	"github.com/liorokman/ninjarecipe/internal/app"
+	"github.com/liorokman/ninjarecipe/internal/auth"
+	"github.com/liorokman/ninjarecipe/internal/config"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/service"
 )
 
 // Options configure Start.

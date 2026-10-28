@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"cooking/internal/domain"
-	"cooking/internal/textnorm"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/textnorm"
 )
 
 const catCols = `id, type, slug, name, COALESCE(name_he,''), COALESCE(icon,''), sort_order`

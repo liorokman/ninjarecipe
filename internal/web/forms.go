@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"cooking/internal/domain"
-	"cooking/internal/recipetext"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/recipetext"
 )
 
 func itoa(p *int) string {

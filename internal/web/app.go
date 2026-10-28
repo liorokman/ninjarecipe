@@ -11,14 +11,14 @@ import (
 	"sync"
 	"time"
 
-	"cooking/internal/auth"
-	"cooking/internal/config"
-	"cooking/internal/domain"
-	"cooking/internal/httpx"
-	"cooking/internal/i18n"
-	"cooking/internal/images"
-	"cooking/internal/reqctx"
-	"cooking/internal/service"
+	"github.com/liorokman/ninjarecipe/internal/auth"
+	"github.com/liorokman/ninjarecipe/internal/config"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/httpx"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/images"
+	"github.com/liorokman/ninjarecipe/internal/reqctx"
+	"github.com/liorokman/ninjarecipe/internal/service"
 )
 
 // Pinger is the DB readiness probe.

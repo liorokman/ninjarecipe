@@ -1,7 +1,7 @@
 // Package oven is the single source of truth for the Ninja Woodfire OO101 settings model (spec 25).
 package oven
 
-import "cooking/internal/domain"
+import "github.com/liorokman/ninjarecipe/internal/domain"
 
 // Issue is the validation message type (code + params, no human text).
 type Issue = domain.Issue

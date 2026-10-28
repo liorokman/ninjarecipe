@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 func TestParseIngredientLine(t *testing.T) {

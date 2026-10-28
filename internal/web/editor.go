@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strconv"
 
-	"cooking/internal/domain"
-	"cooking/internal/oven"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/oven"
 )
 
 // Editor limits exposed to JS.

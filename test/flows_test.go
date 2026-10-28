@@ -8,9 +8,9 @@ import (
 
 	"golang.org/x/net/html"
 
-	"cooking/internal/domain"
-	"cooking/internal/web"
-	"cooking/test/harness"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/web"
+	"github.com/liorokman/ninjarecipe/test/harness"
 )
 
 // ---- tiny DOM helpers (x/net/html) ----

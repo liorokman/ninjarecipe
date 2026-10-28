@@ -15,11 +15,11 @@ import (
 	"os"
 	"time"
 
-	"cooking/internal/domain"
-	"cooking/internal/httpx"
-	"cooking/internal/i18n"
-	"cooking/internal/web"
-	webfs "cooking/web"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/httpx"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/web"
+	webfs "github.com/liorokman/ninjarecipe/web"
 )
 
 func main() {

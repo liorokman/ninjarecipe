@@ -7,7 +7,7 @@ import (
 	"testing/fstest"
 	"time"
 
-	"cooking/locales"
+	"github.com/liorokman/ninjarecipe/locales"
 )
 
 func load(t *testing.T) *Catalog {

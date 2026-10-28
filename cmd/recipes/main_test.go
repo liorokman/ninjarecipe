@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"cooking/internal/db"
+	"github.com/liorokman/ninjarecipe/internal/db"
 )
 
 func runCLI(t *testing.T, env map[string]string, args ...string) (int, string, string) {

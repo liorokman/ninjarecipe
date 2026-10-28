@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	"cooking/internal/domain"
-	"cooking/internal/store"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/store"
 )
 
 func urlEscape(s string) string { return url.QueryEscape(s) }

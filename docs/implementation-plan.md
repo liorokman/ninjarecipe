@@ -4,7 +4,7 @@ Status of this plan: authored 2026-10-27 after auditing `cmd/ internal/ web/ loc
 
 Verdict: the code builds and its own tests pass, but it implements an older model. Roughly 85 % of domain, oven, schema, store, service, web, api, templates and JS must be rewritten. Reusable (adapt, not rewrite): `internal/images/{ssrf,storage,pipeline}` (fix formats), `internal/httpx/{ip,ratelimit}`, `internal/events`, `internal/categorize`, `internal/auth/{session,bearer}` (fix details), `internal/i18n` helpers, `internal/config` (rename vars). Delete: `internal/web/handlers_dev.go` (auth bypass, forbidden by 20 §5.5), root `docker-compose.yml`, `deploy/docker-compose*.yml`, all old tests asserting old behaviour.
 
-Module path is `cooking` (keep; spec does not fix it). Installed: Go 1.27.2, node 24.14, google-chrome 156 (`/usr/bin/google-chrome`), docker, task. No playwright browsers, no golangci-lint, no goose binary. Network works (npm/go proxy).
+Module path is `github.com/liorokman/ninjarecipe`. Installed: Go 1.27.2, node 24.14, google-chrome 156 (`/usr/bin/google-chrome`), docker, task. No playwright browsers, no golangci-lint, no goose binary. Network works (npm/go proxy).
 
 ---------------------------------------------------------------------------------------------------
 

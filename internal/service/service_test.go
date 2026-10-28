@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"cooking/internal/db"
-	"cooking/internal/domain"
-	"cooking/internal/images"
-	"cooking/internal/store"
+	"github.com/liorokman/ninjarecipe/internal/db"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/images"
+	"github.com/liorokman/ninjarecipe/internal/store"
 )
 
 type fakeClock struct{ t time.Time }

@@ -9,9 +9,9 @@ import (
 	"image/jpeg"
 	"net/http"
 
-	"cooking/internal/domain"
-	"cooking/internal/service"
-	"cooking/internal/web/fixtures"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/service"
+	"github.com/liorokman/ninjarecipe/internal/web/fixtures"
 )
 
 // JPEG makes a deterministic test photo.

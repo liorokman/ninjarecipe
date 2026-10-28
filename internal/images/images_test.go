@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 func jpegImg(w, h int) []byte {

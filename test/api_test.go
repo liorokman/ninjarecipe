@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"cooking/test/harness"
+	"github.com/liorokman/ninjarecipe/test/harness"
 )
 
 type problem struct {

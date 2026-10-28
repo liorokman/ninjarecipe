@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"cooking/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
 )
 
 func main() {

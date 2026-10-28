@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"cooking/internal/authz"
-	"cooking/internal/domain"
-	"cooking/internal/images"
-	"cooking/internal/reqctx"
-	"cooking/internal/service"
+	"github.com/liorokman/ninjarecipe/internal/authz"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/images"
+	"github.com/liorokman/ninjarecipe/internal/reqctx"
+	"github.com/liorokman/ninjarecipe/internal/service"
 )
 
 func (a *App) home(w http.ResponseWriter, r *http.Request) {

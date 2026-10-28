@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 const userCols = `id, oidc_issuer, oidc_subject, email, display_name, is_admin, COALESCE(ui_language,''), last_login_at, created_at, updated_at`

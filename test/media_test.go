@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"cooking/internal/images"
-	"cooking/test/harness"
+	"github.com/liorokman/ninjarecipe/internal/images"
+	"github.com/liorokman/ninjarecipe/test/harness"
 )
 
 func upload(c *harness.Client, path, field string, data []byte) (*http.Response, string) {

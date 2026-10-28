@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 // SortKeys lists valid sort values.

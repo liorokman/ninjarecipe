@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"cooking/internal/domain"
-	"cooking/test/harness"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/test/harness"
 )
 
 func nowUTC() time.Time        { return time.Now().UTC() }

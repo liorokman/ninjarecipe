@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 // Normalize applies the silent rules: smoker => woodfire, accessory sort/dedupe, trims.

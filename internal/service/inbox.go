@@ -10,12 +10,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"cooking/internal/authz"
-	"cooking/internal/domain"
-	"cooking/internal/events"
-	"cooking/internal/images"
-	"cooking/internal/recipetext"
-	"cooking/internal/store"
+	"github.com/liorokman/ninjarecipe/internal/authz"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/events"
+	"github.com/liorokman/ninjarecipe/internal/images"
+	"github.com/liorokman/ninjarecipe/internal/recipetext"
+	"github.com/liorokman/ninjarecipe/internal/store"
 )
 
 // ---- API import types (40 §4.1) ----

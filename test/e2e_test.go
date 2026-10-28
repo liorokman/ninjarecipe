@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"cooking/internal/jobs"
-	"cooking/test/harness"
+	"github.com/liorokman/ninjarecipe/internal/jobs"
+	"github.com/liorokman/ninjarecipe/test/harness"
 )
 
 func start(t *testing.T, o harness.Options) *harness.Harness {

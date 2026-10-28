@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"cooking/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/domain"
 )
 
 func ip(i int) *int { return &i }

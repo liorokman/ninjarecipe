@@ -1,4 +1,4 @@
-module cooking
+module github.com/liorokman/ninjarecipe
 
 go 1.26.0
 

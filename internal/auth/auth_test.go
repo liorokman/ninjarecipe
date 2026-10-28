@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"cooking/internal/config"
-	"cooking/internal/db"
-	"cooking/internal/domain"
-	"cooking/internal/store"
+	"github.com/liorokman/ninjarecipe/internal/config"
+	"github.com/liorokman/ninjarecipe/internal/db"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/store"
 )
 
 func TestBearerToken(t *testing.T) {

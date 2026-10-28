@@ -20,13 +20,13 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"cooking/internal/app"
-	"cooking/internal/config"
-	"cooking/internal/db"
-	"cooking/internal/domain"
-	"cooking/internal/jobs"
-	"cooking/internal/service"
-	"cooking/internal/store"
+	"github.com/liorokman/ninjarecipe/internal/app"
+	"github.com/liorokman/ninjarecipe/internal/config"
+	"github.com/liorokman/ninjarecipe/internal/db"
+	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/jobs"
+	"github.com/liorokman/ninjarecipe/internal/service"
+	"github.com/liorokman/ninjarecipe/internal/store"
 )
 
 // Set by -ldflags "-X main.version=... -X main.commit=... -X main.date=...".

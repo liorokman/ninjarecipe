@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"cooking/internal/httpx"
-	"cooking/internal/reqctx"
-	"cooking/internal/service"
+	"github.com/liorokman/ninjarecipe/internal/httpx"
+	"github.com/liorokman/ninjarecipe/internal/reqctx"
+	"github.com/liorokman/ninjarecipe/internal/service"
 )
 
 // BearerToken extracts the token from an Authorization header ("" if absent/malformed).

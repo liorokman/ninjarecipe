@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode"
 
-	"cooking/internal/i18n"
+	"github.com/liorokman/ninjarecipe/internal/i18n"
 )
 
 // FuncCtx is the request-scoped data template funcs close over.
