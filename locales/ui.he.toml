@@ -1044,3 +1044,34 @@ other = "כבוי"
 
 ["tokens.title"]
 other = "גישה לעוזר"
+
+["inbox.reason_legend"]
+other = "למה? (לא חובה)"
+
+["inbox.reason.not_our_taste"]
+other = "לא לטעמנו"
+
+["inbox.reason.too_complicated"]
+other = "מסובך מדי"
+
+["inbox.reason.not_for_our_oven"]
+other = "לא מתאים לתנור שלנו"
+
+["inbox.reason.already_have"]
+other = "כבר יש לנו מתכון דומה"
+
+["inbox.reason.poor_details"]
+other = "פרטים חסרים או שגויים"
+
+["inbox.note_label"]
+other = "עוד משהו? (לא חובה)"
+
+["tokens.brief_title"]
+other = "מה העוזר שלך צריך לחפש?"
+
+["tokens.brief_hint"]
+other = "לדוגמה: עוד דגים מעושנים, רעיונות לבצק פיצה, שום דבר חריף מדי."
+
+["tokens.brief_save"]
+other = "שמירה"
+

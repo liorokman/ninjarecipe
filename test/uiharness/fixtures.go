@@ -132,6 +132,7 @@ func newFixtureHandler(rd *web.Renderer, cat *i18n.Catalog, base string) http.Ha
 			http.Redirect(w, r, web.URL(name), http.StatusSeeOther)
 		}
 	}
+	f("assistant.brief", redir("tokens.list", "flash.brief_saved"))
 	f("admin.category.create", redir("admin.categories", "flash.category_saved"))
 	f("admin.category.update", redir("admin.categories", "flash.category_saved"))
 	f("admin.category.delete", redir("admin.categories", "flash.category_deleted"))

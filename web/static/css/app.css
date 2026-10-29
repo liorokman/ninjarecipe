@@ -231,6 +231,9 @@ input[type="checkbox"], input[type="radio"] { inline-size: 1.4rem; block-size: 1
 .searchbar input[type="search"] { border: 0; background: transparent; min-block-size: 48px; padding-inline: .3rem; box-shadow: none !important; flex: 1; font-size: 1.05rem; }
 .searchbar .ic { color: var(--muted); }
 .js .no-js-only { display: none; }
+/* without JS the modal cannot open, so the throw-away dialog is shown inline */
+html:not(.js) .js-only { display: none; }
+html:not(.js) dialog.dialog { display: block; position: static; margin: 1.5rem auto; border: 2px solid var(--line); box-shadow: none; }
 .htmx-indicator { opacity: 0; transition: opacity .2s; }
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
 .spinner { inline-size: 22px; block-size: 22px; border-radius: 50%; border: 3px solid var(--line); border-block-start-color: var(--accent); animation: spin .8s linear infinite; flex: none; }

@@ -36,6 +36,7 @@ change a concept, change it only in its owning document.
 | Oven modes, stage fields, validation, oven labels | `25` |
 | Tables, columns, constraints, seed data, deletion rules | `30` |
 | URLs, methods, request/response formats, status codes | `40` |
+| Assistant integration: duplicate rules, outcomes, brief, OpenAPI, MCP | `40 §4, §7–§9` |
 | Docker image, compose files, Cosmos, Authentik, backup/restore procedures | `50` |
 | Dependencies, code structure, tests | `60` |
 | Screens, per-screen permission flags, client behaviour, PWA | `70` |

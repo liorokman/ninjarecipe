@@ -8,6 +8,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/liorokman/ninjarecipe/internal/domain"
 	"github.com/liorokman/ninjarecipe/internal/i18n"
 )
 
@@ -55,16 +56,18 @@ func Funcs(fc FuncCtx) template.FuncMap {
 			_, u := i18n.ConvertUnit(f, unit)
 			return u
 		},
-		"deref":       deref,
-		"fmtDate":     func(t any) string { return loc.FmtDate(toTime(t), fc.Now) },
-		"fmtAgo":      func(t any) string { return loc.FmtAgo(toTime(t), fc.Now) },
-		"fmtDateTime": func(t any) string { return loc.FmtDateTime(toTime(t), fc.Now) },
-		"fieldID":     FieldID,
-		"secH":        func(s any) int { return toInt(s) / 3600 },
-		"secM":        func(s any) int { return toInt(s) % 3600 / 60 },
-		"secS":        func(s any) int { return toInt(s) % 60 },
-		"dirFor":      DirFor,
-		"langFor":     LangFor,
+		"deref": deref,
+		// the fixed optional throw-away reasons of the inbox dialog (30 §5a), in display order
+		"rejectReasons": func() []domain.RejectReason { return domain.RejectReasons },
+		"fmtDate":       func(t any) string { return loc.FmtDate(toTime(t), fc.Now) },
+		"fmtAgo":        func(t any) string { return loc.FmtAgo(toTime(t), fc.Now) },
+		"fmtDateTime":   func(t any) string { return loc.FmtDateTime(toTime(t), fc.Now) },
+		"fieldID":       FieldID,
+		"secH":          func(s any) int { return toInt(s) / 3600 },
+		"secM":          func(s any) int { return toInt(s) % 3600 / 60 },
+		"secS":          func(s any) int { return toInt(s) % 60 },
+		"dirFor":        DirFor,
+		"langFor":       LangFor,
 		"seq": func(from, to int) []int {
 			var out []int
 			for i := from; i <= to; i++ {

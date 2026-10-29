@@ -1,0 +1,1539 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Ninja Woodfire Recipe Keeper API",
+  "version": "1",
+  "description": "Lets an AI assistant find recipes on the web and submit them for review. Submissions go to the token owner's review list; the API can never keep, share, edit or delete recipes."
+ },
+ "servers": [
+  {
+   "url": "/api/v1"
+  }
+ ],
+ "paths": {
+  "/inbox": {
+   "post": {
+    "operationId": "submitRecipe",
+    "summary": "Submit a recipe to the token owner's review list",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "description": "Scope inbox:write. Duplicate rules: same Idempotency-Key replays (200); a recipe with the same normalized source URL gives 409 duplicate (override with allow_duplicate=1); a source the user already kept or threw away gives 409 previously-reviewed (never overridden).",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 100
+      }
+     },
+     {
+      "name": "allow_duplicate",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "1"
+       ]
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RecipeImport"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Idempotent replay",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportResult"
+        }
+       }
+      }
+     },
+     "201": {
+      "description": "Created",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImportResult"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Malformed JSON or Idempotency-Key",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "duplicate or previously-reviewed",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "413": {
+      "description": "Body too large",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation failed",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid, expired or revoked token",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "The token lacks the required scope",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited; see Retry-After",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "operationId": "listInbox",
+    "summary": "Own pending review items",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "description": "Scope inbox:write.",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/RecipeSummary"
+         }
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid, expired or revoked token",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "The token lacks the required scope",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited; see Retry-After",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/inbox/{id}": {
+   "delete": {
+    "operationId": "withdrawInboxItem",
+    "summary": "Withdraw an own pending item",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "description": "Scope inbox:write. Records no outcome.",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Withdrawn"
+     },
+     "404": {
+      "description": "Not found, or already kept or thrown away",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid, expired or revoked token",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "The token lacks the required scope",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited; see Retry-After",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/inbox/outcomes": {
+   "get": {
+    "operationId": "listOutcomes",
+    "summary": "Keep / Throw away decisions",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "description": "Scope inbox:write. Oldest first.",
+    "parameters": [
+     {
+      "name": "after",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      },
+      "description": "Cursor from a previous response; omit for the start."
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 100,
+       "default": 50
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OutcomePage"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Bad cursor or limit",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid, expired or revoked token",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "The token lacks the required scope",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited; see Retry-After",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/recipes": {
+   "get": {
+    "operationId": "searchRecipes",
+    "summary": "Search recipes visible to the user",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "description": "Scope recipes:read. source_url is matched after normalization (scheme, www., tracking parameters, trailing slash and fragment ignored).",
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "maxLength": 200
+      }
+     },
+     {
+      "name": "source_url",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "scope",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "all",
+        "mine",
+        "family"
+       ]
+      }
+     },
+     {
+      "name": "category",
+      "in": "query",
+      "schema": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "style": "form",
+      "explode": true
+     },
+     {
+      "name": "cursor",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 100,
+       "default": 50
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RecipePage"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Bad parameter",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid, expired or revoked token",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "The token lacks the required scope",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited; see Retry-After",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/recipes/{id}": {
+   "get": {
+    "operationId": "getRecipe",
+    "summary": "One recipe",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "description": "Scope recipes:read.",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Recipe"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not found or not visible",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid, expired or revoked token",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "The token lacks the required scope",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited; see Retry-After",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/categories": {
+   "get": {
+    "operationId": "listCategories",
+    "summary": "Known category slugs and tags in use",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "description": "Any valid token.",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Categories"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid, expired or revoked token",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "The token lacks the required scope",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited; see Retry-After",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/assistant/brief": {
+   "get": {
+    "operationId": "getAssistantBrief",
+    "summary": "What the user wants the assistant to look for",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "description": "Any valid token.",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AssistantBrief"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing, invalid, expired or revoked token",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "The token lacks the required scope",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited; see Retry-After",
+      "content": {
+       "application/problem+json": {
+        "schema": {
+         "$ref": "#/components/schemas/Problem"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/meta/oven": {
+   "get": {
+    "operationId": "getOvenReference",
+    "summary": "Oven modes, ranges and options",
+    "security": [],
+    "description": "Public.",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OvenReference"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "securitySchemes": {
+   "bearer": {
+    "type": "http",
+    "scheme": "bearer",
+    "description": "Per-user key created under Assistant access (nwr_…)."
+   }
+  },
+  "schemas": {
+   "OvenStage": {
+    "type": "object",
+    "properties": {
+     "mode": {
+      "type": "string",
+      "enum": [
+       "pizza",
+       "gourmet_roast",
+       "max_roast",
+       "smoker",
+       "bake",
+       "broil",
+       "dehydrate",
+       "keep_warm"
+      ]
+     },
+     "pizza_preset": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "enum": [
+       "artisan",
+       "thin_crust",
+       "new_york",
+       "chicago",
+       "calzone",
+       "custom",
+       null
+      ],
+      "description": "Only with mode 'pizza'."
+     },
+     "temperature_c": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "duration_seconds": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "temperature2_c": {
+      "type": [
+       "integer",
+       "null"
+      ],
+      "description": "Gourmet Roast stage 2 only."
+     },
+     "duration2_seconds": {
+      "type": [
+       "integer",
+       "null"
+      ],
+      "description": "Gourmet Roast stage 2 only."
+     },
+     "preheat_minutes": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "woodfire": {
+      "type": "boolean"
+     },
+     "pellet_blend": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "enum": [
+       "all_purpose",
+       "robust",
+       "other",
+       null
+      ]
+     },
+     "pellet_note": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "description": "Free text, at most 60 characters, e.g. 'hickory'."
+     },
+     "accessories": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "enum": [
+        "pizza_stone",
+        "pro_heat_pan",
+        "roast_rack",
+        "own_pan"
+       ]
+      }
+     },
+     "target_core_temp_c": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "notes": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "mode"
+    ],
+    "description": "One oven stage. Ranges and which fields apply per mode are in GET /meta/oven; numeric ranges are enforced by the server, not by this schema."
+   },
+   "OvenStageOut": {
+    "allOf": [
+     {
+      "$ref": "#/components/schemas/OvenStage"
+     },
+     {
+      "type": "object",
+      "properties": {
+       "preheat": {
+        "type": "boolean",
+        "description": "Derived from the mode."
+       },
+       "frame_level": {
+        "type": "string",
+        "enum": [
+         "top",
+         "bottom"
+        ],
+        "description": "Derived from the mode."
+       }
+      }
+     }
+    ]
+   },
+   "ImportIngredient": {
+    "type": "object",
+    "properties": {
+     "amount": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "unit": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "description": "Alias accepted; see the unit table in the spec. Canonical: g, kg, ml, l, tsp, tbsp, pcs, pinch."
+     },
+     "item": {
+      "type": "string"
+     },
+     "section": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "text": {
+      "type": "string",
+      "description": "A whole ingredient line to be parsed server-side, instead of amount/unit/item."
+     }
+    },
+    "description": "Either structured (amount, unit, item) or text."
+   },
+   "ImportStep": {
+    "type": "object",
+    "properties": {
+     "text": {
+      "type": "string"
+     },
+     "timer_seconds": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "text"
+    ]
+   },
+   "ImportImage": {
+    "type": "object",
+    "properties": {
+     "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "https only; LAN and localhost URLs are rejected, send data_base64 instead."
+     },
+     "data_base64": {
+      "type": "string"
+     },
+     "caption": {
+      "type": "string"
+     }
+    },
+    "description": "Either url or data_base64. The first image is the cover."
+   },
+   "RecipeImport": {
+    "type": "object",
+    "properties": {
+     "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+     },
+     "description": {
+      "type": "string",
+      "maxLength": 2000
+     },
+     "notes": {
+      "type": "string",
+      "maxLength": 8000
+     },
+     "language": {
+      "type": "string",
+      "enum": [
+       "en",
+       "he",
+       "und"
+      ],
+      "default": "und"
+     },
+     "servings": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "prep_minutes": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "source_url": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "The page's canonical URL. Used to detect recipes already seen, kept or thrown away."
+     },
+     "source_name": {
+      "type": "string",
+      "maxLength": 100
+     },
+     "categories": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "tags": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "ingredients": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/ImportIngredient"
+      }
+     },
+     "steps": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/ImportStep"
+      }
+     },
+     "oven_stages": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/OvenStage"
+      }
+     },
+     "images": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/ImportImage"
+      }
+     }
+    },
+    "required": [
+     "title"
+    ]
+   },
+   "Issue": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "code": {
+      "type": "string"
+     },
+     "params": {
+      "type": "object"
+     }
+    },
+    "required": [
+     "name",
+     "code"
+    ]
+   },
+   "ImportResult": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "inbox"
+      ]
+     },
+     "title": {
+      "type": "string"
+     },
+     "review_url": {
+      "type": "string",
+      "format": "uri"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time"
+     },
+     "warnings": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Issue"
+      }
+     }
+    },
+    "required": [
+     "id",
+     "status",
+     "title",
+     "review_url",
+     "created_at",
+     "warnings"
+    ]
+   },
+   "Problem": {
+    "type": "object",
+    "properties": {
+     "type": {
+      "type": "string",
+      "format": "uri"
+     },
+     "title": {
+      "type": "string"
+     },
+     "status": {
+      "type": "integer"
+     },
+     "detail": {
+      "type": "string"
+     },
+     "instance": {
+      "type": "string"
+     },
+     "request_id": {
+      "type": "string"
+     },
+     "invalid_params": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "name": {
+         "type": "string"
+        },
+        "code": {
+         "type": "string"
+        },
+        "params": {
+         "type": "object"
+        },
+        "reason": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "existing_id": {
+      "type": "string",
+      "description": "With problem type 'duplicate'."
+     },
+     "outcome": {
+      "type": "string",
+      "enum": [
+       "kept",
+       "rejected"
+      ],
+      "description": "With problem type 'previously-reviewed'."
+     },
+     "decided_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "With problem type 'previously-reviewed'."
+     },
+     "reason": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "enum": [
+       "not_our_taste",
+       "too_complicated",
+       "not_for_our_oven",
+       "already_have",
+       "poor_details",
+       null
+      ],
+      "description": "With problem type 'previously-reviewed'."
+     }
+    },
+    "required": [
+     "type",
+     "title",
+     "status"
+    ]
+   },
+   "CoverImage": {
+    "type": "object",
+    "properties": {
+     "thumb_url": {
+      "type": "string"
+     },
+     "full_url": {
+      "type": "string"
+     }
+    }
+   },
+   "UserRef": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "display_name": {
+      "type": "string"
+     }
+    }
+   },
+   "RecipeSummary": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "title": {
+      "type": "string"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "inbox",
+       "active"
+      ]
+     },
+     "visibility": {
+      "type": "string",
+      "enum": [
+       "private",
+       "shared"
+      ]
+     },
+     "owner": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/UserRef"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "language": {
+      "type": "string"
+     },
+     "categories": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "tags": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "primary_mode": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "total_oven_seconds": {
+      "type": "integer"
+     },
+     "uses_woodfire": {
+      "type": "boolean"
+     },
+     "cover_image": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/CoverImage"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "source_url": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time"
+     }
+    }
+   },
+   "Recipe": {
+    "allOf": [
+     {
+      "$ref": "#/components/schemas/RecipeSummary"
+     },
+     {
+      "type": "object",
+      "properties": {
+       "description": {
+        "type": "string"
+       },
+       "notes": {
+        "type": "string"
+       },
+       "servings": {
+        "type": [
+         "integer",
+         "null"
+        ]
+       },
+       "prep_minutes": {
+        "type": [
+         "integer",
+         "null"
+        ]
+       },
+       "source_name": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "ingredients": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "section": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "amount": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "unit": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "item": {
+           "type": "string"
+          },
+          "raw_text": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       "steps": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "text": {
+           "type": "string"
+          },
+          "timer_seconds": {
+           "type": [
+            "integer",
+            "null"
+           ]
+          }
+         }
+        }
+       },
+       "oven_stages": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/OvenStageOut"
+        }
+       },
+       "images": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "id": {
+           "type": "string"
+          },
+          "thumb_url": {
+           "type": "string"
+          },
+          "full_url": {
+           "type": "string"
+          },
+          "width": {
+           "type": "integer"
+          },
+          "height": {
+           "type": "integer"
+          },
+          "caption": {
+           "type": [
+            "string",
+            "null"
+           ]
+          }
+         }
+        }
+       },
+       "version": {
+        "type": "integer"
+       },
+       "created_at": {
+        "type": "string",
+        "format": "date-time"
+       },
+       "created_by": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "updated_by": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      }
+     }
+    ]
+   },
+   "RecipePage": {
+    "type": "object",
+    "properties": {
+     "items": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/RecipeSummary"
+      }
+     },
+     "next_cursor": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "items",
+     "next_cursor"
+    ]
+   },
+   "Outcome": {
+    "type": "object",
+    "properties": {
+     "cursor": {
+      "type": "string"
+     },
+     "item_id": {
+      "type": "string",
+      "format": "uuid"
+     },
+     "recipe_id": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "description": "The recipe id when the item was kept and the recipe still exists."
+     },
+     "title": {
+      "type": "string"
+     },
+     "source_url": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "outcome": {
+      "type": "string",
+      "enum": [
+       "kept",
+       "rejected"
+      ]
+     },
+     "reason": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "enum": [
+       "not_our_taste",
+       "too_complicated",
+       "not_for_our_oven",
+       "already_have",
+       "poor_details",
+       null
+      ]
+     },
+     "note": {
+      "type": "string"
+     },
+     "edited": {
+      "type": "boolean"
+     },
+     "shared": {
+      "type": "boolean"
+     },
+     "decided_at": {
+      "type": "string",
+      "format": "date-time"
+     }
+    },
+    "required": [
+     "cursor",
+     "item_id",
+     "title",
+     "outcome",
+     "note",
+     "decided_at"
+    ]
+   },
+   "OutcomePage": {
+    "type": "object",
+    "properties": {
+     "items": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Outcome"
+      }
+     },
+     "next_cursor": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "items",
+     "next_cursor"
+    ]
+   },
+   "AssistantBrief": {
+    "type": "object",
+    "properties": {
+     "text": {
+      "type": "string"
+     },
+     "language": {
+      "type": "string",
+      "enum": [
+       "en",
+       "he"
+      ]
+     },
+     "updated_at": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "text",
+     "language",
+     "updated_at"
+    ]
+   },
+   "Categories": {
+    "type": "object",
+    "properties": {
+     "categories": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "slug": {
+         "type": "string"
+        },
+        "name": {
+         "type": "string"
+        },
+        "name_he": {
+         "type": "string"
+        },
+        "icon": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "tags": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "OvenReference": {
+    "type": "object",
+    "description": "Limits, modes with per-field rules, pizza presets, pellet blends and accessories (25 §4)."
+   }
+  }
+ }
+}

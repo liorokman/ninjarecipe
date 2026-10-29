@@ -371,3 +371,9 @@ one = "לפני שנה"
 two = "לפני שנתיים"
 many = "לפני {{.Count}} שנים"
 other = "לפני {{.Count}} שנים"
+
+["flash.brief_saved"]
+other = "נשמר"
+
+["issue.field.text"]
+other = "הטקסט"

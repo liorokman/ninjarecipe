@@ -88,7 +88,7 @@ Services own transactions, validation, FTS maintenance and event publishing.
 /cmd/recipes/main.go          # subcommands (§17)
 /internal/config/             # env parsing + validation (fail fast)
 /internal/db/                 # Open(reader, writer), pragmas, goose runner, version guard
-/internal/db/migrations/      # 0001_initial_schema.sql, 0002_seed_categories.sql (embedded)
+/internal/db/migrations/      # 0001_initial_schema.sql, 0002_seed_categories.sql, 0003_assistant_feedback.sql (embedded)
 /internal/store/              # repositories (one file per aggregate)
 /internal/domain/             # plain structs + enums
 /internal/oven/               # spec.go (table), validate.go, derive.go
@@ -100,7 +100,8 @@ Services own transactions, validation, FTS maintenance and event publishing.
 /internal/categorize/         # Categorizer interface, Noop
 /internal/i18n/               # bundle, per-request Localizer, template funcs, i18ncheck tool
 /internal/web/                # HTML handlers, view models, form parsing, flash
-/internal/api/                # JSON handlers, problem+json, DTOs
+/internal/api/                # JSON handlers, problem+json, DTOs, openapi.json
+/internal/mcp/                # MCP server over the service layer (40 §9.2)
 /internal/httpx/              # generic middleware
 /web/templates/               # layout.html, pages/*.html, partials/*.html
 /web/static/                  # css/, js/, vendor/htmx.min.js, icons/, manifest.webmanifest, sw.js
@@ -193,8 +194,10 @@ The real code path is always used: **the binary has no auth-bypass flag or dev-l
 - Format `nwr_` + 32 random bytes base62 (~43 chars), shown once. Stored: `token_hash = hex(SHA-256(full token))`,
   `token_prefix` = first 8 chars after `nwr_`, scopes, `expires_at`, `revoked_at`, `last_used_at` (updated ≤ 1/min).
 - `Authorization: Bearer nwr_…`; lookup by hash. Reject (401) when unknown, revoked, expired, or the user is gone.
-- Scopes: `inbox:write` (submit, list, withdraw own inbox items), `recipes:read` (read recipes visible to the user,
-  their images, categories). New tokens default to both.
+- Scopes: `inbox:write` (submit, list, withdraw own inbox items; read own Keep / Throw away outcomes),
+  `recipes:read` (read recipes visible to the user, their images). Any valid token may read categories, the oven
+  reference and the user's assistant brief. New tokens default to both scopes. The MCP endpoint (`40 §9.2`) applies
+  the same scopes per tool.
 - Tokens act as their user with the same authz, but can never accept/reject, edit, share or delete (browser-only).
 - Rate limit: in-memory token bucket per token, `API_RATE_LIMIT_PER_MIN` (default 60) with burst 20 → 429 + `Retry-After`.
 
@@ -252,6 +255,7 @@ Actor = session user or token user. Predicates live in `internal/authz` as pure 
 - **Input limits** (server-side; also HTML `maxlength`): title ≤ 200, description ≤ 2000, notes ≤ 8000,
   ingredient line ≤ 300, step ≤ 4000, ≤ 100 ingredients, ≤ 100 steps, ≤ 10 stages, stage notes ≤ 500,
   pellet note ≤ 60, ≤ 5 categories, ≤ 20 tags, tag ≤ 40 chars, cook-log note ≤ 2000, source URL ≤ 2000,
+  assistant brief ≤ 2000, throw-away note ≤ 200,
   `MAX_IMAGES_PER_RECIPE` (default 10; counts recipe photos only, not cook-log photos).
 - **Secrets**: `OIDC_CLIENT_SECRET` or `OIDC_CLIENT_SECRET_FILE` (exactly one). Never logged; the startup config
   dump redacts it. Tokens, cookies, `Authorization` headers and OAuth `code`/`state` query values are never logged.

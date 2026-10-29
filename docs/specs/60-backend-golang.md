@@ -19,7 +19,9 @@ documents define something, this one only says how to implement it.
 | `golang.org/x/image` | WebP decode, CatmullRom resize |
 | `github.com/rwcarlsen/goexif` | EXIF orientation |
 | `github.com/google/uuid` | UUID v4 |
-| `golang.org/x/net/html` | **tests only**: HTML parsing for route/flag tests (§6.3) |
+| `github.com/modelcontextprotocol/go-sdk` | MCP server (`40 §9.2`); latest release at implementation time |
+| `golang.org/x/net` | `idna` for `textnorm.SourceKey` (`40 §4.3`); `html` is **tests only**: HTML parsing for route/flag tests (§6.3) |
+| `github.com/google/jsonschema-go` | **tests only**: validating examples against `openapi.json` (§6.3 item 6); already required by the MCP SDK |
 
 No HEIC decoder (HEIC is rejected, `20 §8`). No web framework, no ORM, no JS build tooling.
 Front-end vendored files: `web/static/vendor/htmx.min.js` (pinned version + SHA-256 in `Taskfile.yml`).
@@ -62,7 +64,10 @@ Home(ctx, actor) (HomeData, error)
 ImportToInbox(ctx, actor, in RecipeImport, idemKey string) (*ImportResult, error)
 AcceptInbox(ctx, actor, id string, share bool) (nextID string, err error)
 EditAndAcceptInbox(ctx, actor, id string, in RecipeInput) (nextID string, err error)
-RejectInbox(ctx, actor, id string) (nextID string, err error)
+RejectInbox(ctx, actor, id string, reason domain.RejectReason, note string) (nextID string, err error)
+ListOutcomes(ctx, actor, after string, limit int) (OutcomePage, error)
+GetAssistantBrief(ctx, actor) (AssistantBrief, error)
+SetAssistantBrief(ctx, actor, text string) error
 // tokens, users, labels, admin categories likewise
 ```
 
@@ -131,8 +136,13 @@ the DB** (the binary has no login bypass).
    `70 §4.3`). Assert 404 for a private recipe of another user.
 4. **Story flows** (one test each): create → view → edit (title and a stage change persist) → share → second user
    edits → owner sees "Last changed by" → delete; inbox import via API → item page → edit-and-keep → appears in search;
+   import → throw away with a reason → `GET /api/v1/inbox/outcomes` shows it → re-import of the same URL with
+   `utm_*` added and `?allow_duplicate=1` → 409 `previously-reviewed`;
    version conflict shows the 409 page; expired session on POST redirects to `/signin` with `return_to`.
 5. **Security headers**: CSP exactly as `20 §8` on every HTML page; no `'unsafe-inline'`.
+6. **Assistant surfaces in step**: every `/api/v1` route in `routes.go` (except `/mcp`) has a path + method in
+   `openapi.json` and vice versa; the §4.1 example validates against its schema; every MCP tool in `40 §9.2`
+   is listed by `tools/list` for a token with both scopes and returns the same result as its REST twin.
 
 ### 6.4 End-to-end (`test/`, `task test:e2e`)
 Go tests driving the running dev mock stack over HTTP: real OIDC login through mock-oauth2-server

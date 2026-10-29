@@ -1036,3 +1036,34 @@ other = "Switched off"
 
 ["tokens.title"]
 other = "Assistant access"
+
+["inbox.reason_legend"]
+other = "Why? (optional)"
+
+["inbox.reason.not_our_taste"]
+other = "Not our taste"
+
+["inbox.reason.too_complicated"]
+other = "Too complicated"
+
+["inbox.reason.not_for_our_oven"]
+other = "Doesn't suit our oven"
+
+["inbox.reason.already_have"]
+other = "We already have one like it"
+
+["inbox.reason.poor_details"]
+other = "Missing or wrong details"
+
+["inbox.note_label"]
+other = "Anything else? (optional)"
+
+["tokens.brief_title"]
+other = "What should your assistant look for?"
+
+["tokens.brief_hint"]
+other = "For example: more smoked fish, pizza dough ideas, nothing too spicy."
+
+["tokens.brief_save"]
+other = "Save"
+

@@ -88,7 +88,12 @@ func (a *App) inboxAccept(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) inboxReject(w http.ResponseWriter, r *http.Request) {
-	next, err := a.Svc.RejectInbox(r.Context(), a.user(r), r.PathValue("id"))
+	if err := a.parseForm(w, r, formLimit); err != nil {
+		a.fail(w, r, err)
+		return
+	}
+	// reason and note are optional; an unknown reason counts as none (40 §2.4)
+	next, err := a.Svc.RejectInbox(r.Context(), a.user(r), r.PathValue("id"), domain.RejectReason(r.PostForm.Get("reason")), r.PostForm.Get("note"))
 	if err != nil {
 		a.fail(w, r, err)
 		return
@@ -109,7 +114,11 @@ func (a *App) tokensView(r *http.Request, newTok string, errs map[string]string)
 	if err != nil {
 		return nil, err
 	}
-	v := &TokensView{Layout: Layout{Title: vb.Loc.T("tokens.title"), ActiveNav: "menu"}, NewToken: newTok, FormErrors: errs,
+	brief, err := a.Svc.GetAssistantBrief(r.Context(), a.user(r))
+	if err != nil {
+		return nil, err
+	}
+	v := &TokensView{Layout: Layout{Title: vb.Loc.T("tokens.title"), ActiveNav: "menu"}, NewToken: newTok, FormErrors: errs, Brief: brief.Text,
 		ScopeOptions: []string{domain.ScopeInboxWrite, domain.ScopeRecipesRead}, ExpiryOptions: []int{0, 30, 90, 365}}
 	now := a.Svc.Clock.Now()
 	for _, t := range toks {
@@ -165,6 +174,37 @@ func (a *App) tokensCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	v.Flash = &FlashView{Kind: "success", Text: vb.Loc.T("flash.token_created")}
 	a.R.Page(w, r, 200, "tokens.html", v)
+}
+
+func (a *App) briefSave(w http.ResponseWriter, r *http.Request) {
+	if err := a.parseForm(w, r, formLimit); err != nil {
+		a.fail(w, r, err)
+		return
+	}
+	text := r.PostForm.Get("text")
+	err := a.Svc.SetAssistantBrief(r.Context(), a.user(r), text)
+	var ve *domain.ValidationError
+	if errors.As(err, &ve) {
+		vb := a.vb(r)
+		errs := map[string]string{}
+		for _, is := range ve.Errors {
+			errs["brief"] = vb.Issue(is, false)
+		}
+		v, e := a.tokensView(r, "", errs)
+		if e != nil {
+			a.fail(w, r, e)
+			return
+		}
+		v.Brief = text // keep what was typed
+		a.R.Page(w, r, 422, "tokens.html", v)
+		return
+	}
+	if err != nil {
+		a.fail(w, r, err)
+		return
+	}
+	SetFlash(w, "success", "flash.brief_saved")
+	http.Redirect(w, r, URL("tokens.list"), http.StatusSeeOther)
 }
 
 func (a *App) tokensRevoke(w http.ResponseWriter, r *http.Request) {
@@ -469,6 +509,7 @@ func (a *App) Handlers() map[string]http.Handler {
 	f("tokens.list", a.tokensList)
 	f("tokens.create", a.tokensCreate)
 	f("tokens.revoke", a.tokensRevoke)
+	f("assistant.brief", a.briefSave)
 	f("admin.categories", a.adminList)
 	f("admin.category.create", a.adminSave(false))
 	f("admin.category.update", a.adminSave(true))

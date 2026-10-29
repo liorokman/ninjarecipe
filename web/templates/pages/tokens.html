@@ -3,6 +3,18 @@
   <h1 class="page-title">{{T "tokens.title"}}</h1>
   <p class="lead">{{T "tokens.lead"}}</p>
 
+  <section class="block" data-test="brief">
+    <h2 class="block-title"><label for="brief-text">{{T "tokens.brief_title"}}</label></h2>
+    <form method="post" action="{{url "assistant.brief"}}" class="stack" data-test="brief-form">
+      <div class="field">
+        <textarea id="brief-text" name="text" rows="5" maxlength="2000" dir="auto" placeholder="{{T "tokens.brief_hint"}}" aria-describedby="brief-hint">{{.Brief}}</textarea>
+        <p id="brief-hint" class="muted">{{T "tokens.brief_hint"}}</p>
+        {{with index .FormErrors "brief"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg" data-test="brief-save">{{T "tokens.brief_save"}}</button>
+    </form>
+  </section>
+
   {{if .NewToken}}
   <section class="token-new" role="status" data-test="token-new">
     <h2 class="block-title">{{T "tokens.created"}}</h2>

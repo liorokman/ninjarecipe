@@ -31,6 +31,11 @@ by the owner.
 | 4.10 | Cook-log photos | **In v1**: one optional photo per cook-log entry, shown under "Our notes", not in the recipe gallery. | Owner (2026-10-27) | `30 §4`, `40 §2.2`, `70 §4.3` |
 | 4.11 | User deletion | Only via `recipes user delete`; private recipes and inbox items are deleted, shared recipes are kept without an owner. | Spec | `30 §3`, `20 §17` |
 | 4.12 | Pre-release migrations | Until the first production deployment, migrations `0001`/`0002` may be edited in place. | Spec | `30 §1` |
+| 4.13 | Assistant memory of decisions | Every Keep / Throw away is recorded in `inbox_outcomes` and survives the hard delete. A source already kept or thrown away is refused with 409 `previously-reviewed`; `allow_duplicate` does not override it. Fixes thrown-away recipes being resubmitted. | Owner (2026-10-29) | `30 §5a`, `40 §4` |
+| 4.14 | Source URL matching | Duplicates are matched on a normalized `source_key` (scheme, `www.`, tracking parameters, trailing slash, fragment ignored), not the raw URL. | Spec | `40 §4.3` |
+| 4.15 | Assistant feedback | Optional throw-away reasons (5 fixed codes + short note); the assistant reads decisions from `GET /api/v1/inbox/outcomes` and a per-user "what to look for" text from `GET /api/v1/assistant/brief`. | Owner (2026-10-29) | `40 §7, §8`, `70 §4.7, §4.9`, `10 H3, H5, H6` |
+| 4.16 | Assistant discovery | The app serves `openapi.json` and an in-process, stateless MCP server at `/api/v1/mcp` (same tokens, scopes and service methods as REST). Assistants such as Hermes connect without custom code. | Owner (2026-10-29) | `40 §9`, `60 §1` |
+| 4.17 | Recipe search stays outside the app | The app does not run inference or crawl the web; an external assistant finds recipes and submits them through the API. In-app ML is limited to the optional categorizer (`20 §15`). | Owner (2026-10-29) | `00` req. 10, `20 §15` |
 | 5.1 | Oven model | The household oven is the **Israeli OO101 variant**. Its function and preset names (incl. official Hebrew) are authoritative: Broil (not Top Heat), Gourmet Roast (not Specialty Roast), Chicago Style (not Deep Pan/Pan), Calzone, no Frozen preset. | Owner (2026-10-27) | `25 §1, §3` |
 | 5.2 | Gourmet Roast | Stored as one stage with Stage 1 and Stage 2 temperature/time, as programmed on the oven. | Owner (2026-10-27) | `25 §2, §4` |
 | 5.3 | Pellets | Record blend + free note only; a full smoke box per cook is assumed (no scoop count). | Owner (2026-10-27) | `25 §2` |
@@ -44,4 +49,5 @@ by the owner.
 
 | # | Question | Default until answered |
 |---|---|---|
-| O4 | Review the Hebrew wording in `10 §4`, `25 §3`, `30 §5` (and later `locales/he.toml`). | **Owner action** (Lior reviews); use as written until then |
+| O4 | Review the Hebrew wording in `10 §4`, `10 H3`/`H6`, `25 §3`, `30 §5` (and later `locales/he.toml`). | **Owner action** (Lior reviews); use as written until then |
+| O5 | Categorizer engine (`20 §15`, story H4). Jev (jevai.net) is a hosted API only and cannot run on Cosmos/LocalAI. Candidates: keyword rules in Go; a multilingual embedding model behind an OpenAI-compatible `/v1/embeddings` endpoint (LocalAI, Ollama, TEI) with nearest-neighbour voting; or both. | `noop` |

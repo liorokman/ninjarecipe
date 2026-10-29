@@ -49,6 +49,15 @@ document.addEventListener('click', (e) => {
   }
 });
 
+/* single-choice chips that tapping the selected one clears (optional throw-away reasons) */
+document.addEventListener('click', (e) => {
+  const input = e.target;
+  if (!(input instanceof HTMLInputElement) || input.type !== 'radio' || !input.hasAttribute('data-clearable')) return;
+  const was = input.dataset.was === '1';
+  input.form?.querySelectorAll(`input[type="radio"][name="${input.name}"]`).forEach((r) => { r.dataset.was = '0'; });
+  if (was) input.checked = false; else input.dataset.was = '1';
+});
+
 /* ---------- actions ---------- */
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch { /* fall back */ }

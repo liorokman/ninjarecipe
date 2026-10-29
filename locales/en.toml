@@ -359,3 +359,9 @@ other = "{{.Count}} months ago"
 ["time.ago.year"]
 one = "{{.Count}} year ago"
 other = "{{.Count}} years ago"
+
+["flash.brief_saved"]
+other = "Saved"
+
+["issue.field.text"]
+other = "That text"

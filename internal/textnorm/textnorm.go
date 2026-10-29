@@ -2,9 +2,14 @@
 package textnorm
 
 import (
+	"net/url"
+	"path"
+	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
+	"golang.org/x/net/idna"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -49,4 +54,74 @@ func MatchExpr(long []string) string {
 // EscapeLike escapes %, _ and \ for LIKE ... ESCAPE '\'.
 func EscapeLike(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
+// trackingParams are query parameters that never identify a page (40 §4.3).
+var trackingParams = map[string]bool{"fbclid": true, "gclid": true, "mc_cid": true, "mc_eid": true, "igshid": true, "ref": true}
+
+// SourceKey normalizes a recipe URL for duplicate detection (40 §4.3). It returns "" when raw is empty or is
+// not an absolute http(s) URL.
+func SourceKey(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+		return ""
+	}
+	host, err := idna.Lookup.ToASCII(strings.ToLower(u.Hostname()))
+	if err != nil || host == "" {
+		return ""
+	}
+	host = strings.TrimPrefix(host, "www.")
+	if port := u.Port(); port != "" && !(u.Scheme == "http" && port == "80") && !(u.Scheme == "https" && port == "443") {
+		host += ":" + port
+	}
+
+	p := path.Clean("/" + u.EscapedPath())
+	p = unescapeUnreserved(p)
+	p = strings.TrimSuffix(p, "/")
+
+	var pairs []string
+	for _, kv := range strings.Split(u.RawQuery, "&") {
+		if kv == "" {
+			continue
+		}
+		name, _, _ := strings.Cut(kv, "=")
+		if n, err := url.QueryUnescape(name); err == nil {
+			name = n
+		}
+		name = strings.ToLower(name)
+		if strings.HasPrefix(name, "utm_") || trackingParams[name] {
+			continue
+		}
+		pairs = append(pairs, kv)
+	}
+	sort.Strings(pairs)
+	key := host + p
+	if len(pairs) > 0 {
+		key += "?" + strings.Join(pairs, "&")
+	}
+	return key
+}
+
+// unescapeUnreserved decodes %XX sequences that encode RFC 3986 unreserved characters and upper-cases the rest.
+func unescapeUnreserved(s string) string {
+	if !strings.Contains(s, "%") {
+		return s
+	}
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '%' && i+2 < len(s) {
+			if v, err := strconv.ParseUint(s[i+1:i+3], 16, 8); err == nil {
+				c := byte(v)
+				if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '.' || c == '_' || c == '~' {
+					b.WriteByte(c)
+				} else {
+					b.WriteString("%" + strings.ToUpper(s[i+1:i+3]))
+				}
+				i += 2
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }

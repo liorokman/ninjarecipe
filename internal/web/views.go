@@ -251,6 +251,7 @@ type TokensView struct {
 	Layout
 	Tokens        []TokenView
 	NewToken      string
+	Brief         string // the user's "what should your assistant look for" text
 	ScopeOptions  []string
 	ExpiryOptions []int
 	FormErrors    map[string]string

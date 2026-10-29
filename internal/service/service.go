@@ -27,6 +27,8 @@ type Service struct {
 	Bus       *events.Bus
 	BaseURL   string
 	MaxImages int
+	// DefaultLang is APP_DEFAULT_LANG, the fallback language of the assistant brief (40 §8).
+	DefaultLang string
 }
 
 // New builds a service. Proc and Fetcher may be nil in tests that do not touch images.

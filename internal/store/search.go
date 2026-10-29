@@ -62,7 +62,11 @@ func (q Q) Search(ctx context.Context, actorID string, sq domain.SearchQuery) (d
 		add(`(SELECT COALESCE(SUM(COALESCE(duration_seconds,0)+COALESCE(duration2_seconds,0)),0) FROM oven_stages s WHERE s.recipe_id=r.id) <= ?`, sq.MaxTimeMin*60)
 	}
 	if sq.SourceURL != "" {
-		add(`r.source_url=?`, sq.SourceURL)
+		if key := textnorm.SourceKey(sq.SourceURL); key != "" {
+			add(`r.source_key=?`, key)
+		} else {
+			add(`0`)
+		}
 	}
 	if sq.Fav {
 		add(`EXISTS (SELECT 1 FROM recipe_favourites f WHERE f.recipe_id=r.id AND f.user_id=?)`, actorID)

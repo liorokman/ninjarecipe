@@ -175,11 +175,30 @@ Format: **As a …, I want …, so that …** followed by acceptance criteria (A
 
 **H3 (Must)** As Lior/Dana, I want two big buttons **"✓ Keep"** and **"✕ Throw away"**, so that reviewing is quick.
 - AC1: "Keep" moves it into **my recipes** as "Just me"; I can then share it.
-- AC2: "Throw away" asks a light confirmation ("Throw away this suggestion?") and removes it.
+- AC2: "Throw away" asks a light confirmation ("Throw away this suggestion?") and removes it. The confirmation
+  also offers **optional** reasons to tap, so the assistant learns what we like; one tap on "Throw away" still works
+  without choosing anything:
+
+  | Reason | עברית |
+  |---|---|
+  | Not our taste | לא לטעמנו |
+  | Too complicated | מסובך מדי |
+  | Doesn't suit our oven | לא מתאים לתנור שלנו |
+  | We already have one like it | כבר יש לנו מתכון דומה |
+  | Missing or wrong details | פרטים חסרים או שגויים |
+  | Anything else? (optional) | עוד משהו? (לא חובה) |
 - AC3: Optional "Edit, then keep" to fix things before saving.
 - AC4: After each choice, the next suggestion appears automatically.
 
 **H4 (Nice)** As Lior, I want the assistant's suggestions to arrive with categories already guessed, so that I just confirm them.
+
+**H5 (Must)** As Lior/Dana, I want the assistant **never to suggest a recipe again** once I've thrown it away (or kept it), so that reviewing doesn't feel like a loop.
+- AC1: Applies even if the web address differs only in tracking bits (`?utm_…`) or `www.`.
+- AC2: A recipe I kept and later deleted is not suggested again either.
+
+**H6 (Must)** As Lior/Dana, I want to **tell the assistant what to look for** in my own words, so that its suggestions fit what we want to cook.
+- AC1: One text box under "Assistant access": **"What should your assistant look for?"** / **"מה העוזר שלך צריך לחפש?"**.
+- AC2: The assistant also sees which suggestions I kept or threw away, and why (when I said).
 
 ### I. Switching to Hebrew
 

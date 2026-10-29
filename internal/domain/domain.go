@@ -266,10 +266,80 @@ var (
 	ErrLimit            = errors.New("limit reached")
 )
 
-// ErrDuplicate: a recipe with the same source_url exists.
+// ErrDuplicate: a recipe with the same source key exists.
 type ErrDuplicate struct{ ExistingID string }
 
 func (e ErrDuplicate) Error() string { return "duplicate source_url, existing " + e.ExistingID }
+
+// ErrPreviouslyReviewed: the source was already kept or thrown away by this user (40 §4 rule 3).
+type ErrPreviouslyReviewed struct {
+	Outcome   string // kept|rejected
+	DecidedAt time.Time
+	Reason    RejectReason
+}
+
+func (e ErrPreviouslyReviewed) Error() string { return "source previously reviewed: " + e.Outcome }
+
+// RejectReason is the optional reason given when throwing an inbox item away (30 §5a).
+type RejectReason string
+
+const (
+	ReasonNotOurTaste    RejectReason = "not_our_taste"
+	ReasonTooComplicated RejectReason = "too_complicated"
+	ReasonNotForOven     RejectReason = "not_for_our_oven"
+	ReasonAlreadyHave    RejectReason = "already_have"
+	ReasonPoorDetails    RejectReason = "poor_details"
+)
+
+// RejectReasons lists the valid codes in display order.
+var RejectReasons = []RejectReason{ReasonNotOurTaste, ReasonTooComplicated, ReasonNotForOven, ReasonAlreadyHave, ReasonPoorDetails}
+
+// Valid reports whether r is one of RejectReasons.
+func (r RejectReason) Valid() bool {
+	for _, x := range RejectReasons {
+		if r == x {
+			return true
+		}
+	}
+	return false
+}
+
+const (
+	OutcomeKept     = "kept"
+	OutcomeRejected = "rejected"
+
+	MaxRejectNote     = 200
+	MaxAssistantBrief = 2000
+)
+
+// Outcome is one Keep / Throw away decision on an inbox item.
+type Outcome struct {
+	ID        int64
+	ItemID    string
+	RecipeID  string // item id when kept and the recipe still exists
+	Title     string
+	SourceURL string
+	SourceKey string
+	Outcome   string
+	Reason    RejectReason
+	Note      string
+	Edited    bool
+	Shared    bool
+	DecidedAt time.Time
+}
+
+// OutcomePage is one page of outcomes in decision order.
+type OutcomePage struct {
+	Items      []Outcome
+	NextCursor string
+}
+
+// AssistantBrief is the user's "what should your assistant look for" text.
+type AssistantBrief struct {
+	Text      string
+	Language  string
+	UpdatedAt *time.Time
+}
 
 // Issue is a machine-readable validation message (code + params; no human text).
 type Issue struct {
@@ -353,7 +423,7 @@ type SearchQuery struct {
 	Sort       string // relevance|updated|title|cooked|rating|recent
 	Cursor     string
 	Limit      int
-	SourceURL  string // exact match (API)
+	SourceURL  string // matched by source key (40 §4.3, API)
 }
 
 // SearchPage is one page of results.

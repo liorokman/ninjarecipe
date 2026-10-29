@@ -191,6 +191,7 @@ func (s *Service) update(ctx context.Context, actor *domain.User, id string, ver
 			return err
 		}
 		now := s.Clock.Now()
+		submittedURL := cur.SourceURL // as the assistant sent it; duplicate detection keys on this (30 §5a)
 		cur.Title, cur.Description, cur.Notes, cur.Language = in.Title, in.Description, in.Notes, in.Language
 		cur.Servings, cur.PrepMinutes, cur.SourceURL, cur.SourceName = in.Servings, in.PrepMinutes, in.SourceURL, in.SourceName
 		cur.Ingredients, cur.Steps, cur.Stages = in.Ingredients, in.Steps, in.Stages
@@ -215,6 +216,9 @@ func (s *Service) update(ctx context.Context, actor *domain.User, id string, ver
 			}
 			cur.Status, cur.Visibility = domain.StatusActive, vis
 			cur.Version++
+			if err := tx.InsertOutcome(ctx, actor.ID, keptOutcome(cur, submittedURL, true, share, now)); err != nil {
+				return err
+			}
 		}
 		if err := tx.ReindexRecipe(ctx, id); err != nil {
 			return err

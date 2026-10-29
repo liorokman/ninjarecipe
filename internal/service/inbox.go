@@ -5,8 +5,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/liorokman/ninjarecipe/internal/images"
 	"github.com/liorokman/ninjarecipe/internal/recipetext"
 	"github.com/liorokman/ninjarecipe/internal/store"
+	"github.com/liorokman/ninjarecipe/internal/textnorm"
 )
 
 // ---- API import types (40 §4.1) ----
@@ -140,7 +143,8 @@ func (s *Service) resultOf(r *domain.Recipe, warns []domain.Issue, created bool)
 	return &ImportResult{ID: r.ID, Status: r.Status, Title: r.Title, ReviewURL: s.reviewURL(r.ID), CreatedAt: store.FormatTime(r.CreatedAt), Warnings: warns, Created: created}
 }
 
-// ImportToInbox implements 40 §4. allowDup skips the source_url duplicate check.
+// ImportToInbox implements 40 §4. allowDup skips the duplicate-recipe check (rule 2) but never the
+// previously-reviewed check (rule 3).
 func (s *Service) ImportToInbox(ctx context.Context, actor *domain.User, ri RecipeImport, idemKey string, allowDup bool) (*ImportResult, error) {
 	q := s.Store.R()
 	if idemKey != "" {
@@ -151,9 +155,16 @@ func (s *Service) ImportToInbox(ctx context.Context, actor *domain.User, ri Reci
 		}
 	}
 	in := ri.ToInput()
-	if in.SourceURL != "" && !allowDup {
-		if id, err := q.FindBySourceURL(ctx, actor.ID, strings.TrimSpace(in.SourceURL)); err == nil {
-			return nil, domain.ErrDuplicate{ExistingID: id}
+	if key := textnorm.SourceKey(in.SourceURL); key != "" {
+		if !allowDup {
+			if id, err := q.FindBySourceKey(ctx, actor.ID, key); err == nil {
+				return nil, domain.ErrDuplicate{ExistingID: id}
+			} else if !errors.Is(err, domain.ErrNotFound) {
+				return nil, err
+			}
+		}
+		if o, err := q.FindOutcomeBySourceKey(ctx, actor.ID, key); err == nil {
+			return nil, domain.ErrPreviouslyReviewed{Outcome: o.Outcome, DecidedAt: o.DecidedAt, Reason: o.Reason}
 		} else if !errors.Is(err, domain.ErrNotFound) {
 			return nil, err
 		}
@@ -338,6 +349,9 @@ func (s *Service) AcceptInbox(ctx context.Context, actor *domain.User, id string
 		if err := tx.ReindexRecipe(ctx, id); err != nil {
 			return err
 		}
+		if err := tx.InsertOutcome(ctx, actor.ID, keptOutcome(r, r.SourceURL, false, share, now)); err != nil {
+			return err
+		}
 		next = s.nextInbox(ctx, tx.Q, actor, id)
 		tx.AfterCommit(func() {
 			s.publish(events.InboxItemAccepted{Base: events.Base{RecipeID: id, ActorID: actor.ID, At: now}})
@@ -356,8 +370,36 @@ func (s *Service) EditAndAcceptInbox(ctx context.Context, actor *domain.User, id
 	return s.nextInbox(ctx, s.Store.R(), actor, id), warns, nil
 }
 
-// RejectInbox throws an item away (hard delete) and returns the next pending id.
-func (s *Service) RejectInbox(ctx context.Context, actor *domain.User, id string) (string, error) {
+func keptOutcome(r *domain.Recipe, submittedURL string, edited, shared bool, now time.Time) *domain.Outcome {
+	return &domain.Outcome{ItemID: r.ID, Title: r.Title, SourceURL: submittedURL, SourceKey: textnorm.SourceKey(submittedURL),
+		Outcome: domain.OutcomeKept, Edited: edited, Shared: shared, DecidedAt: now}
+}
+
+// cleanNote trims a throw-away note and cuts it to domain.MaxRejectNote runes.
+func cleanNote(n string) string {
+	n = strings.TrimSpace(n)
+	if r := []rune(n); len(r) > domain.MaxRejectNote {
+		n = strings.TrimSpace(string(r[:domain.MaxRejectNote]))
+	}
+	return n
+}
+
+// RejectInbox throws an item away (hard delete), records the decision with an optional reason and note
+// (an unknown reason counts as none), and returns the next pending id.
+func (s *Service) RejectInbox(ctx context.Context, actor *domain.User, id string, reason domain.RejectReason, note string) (string, error) {
+	if !reason.Valid() {
+		reason = ""
+	}
+	return s.deleteInboxItem(ctx, actor, id, &domain.Outcome{Outcome: domain.OutcomeRejected, Reason: reason, Note: cleanNote(note)})
+}
+
+// WithdrawInbox is the API variant: deletes an own pending item without recording an outcome (30 §5a).
+func (s *Service) WithdrawInbox(ctx context.Context, actor *domain.User, id string) error {
+	_, err := s.deleteInboxItem(ctx, actor, id, nil)
+	return err
+}
+
+func (s *Service) deleteInboxItem(ctx context.Context, actor *domain.User, id string, o *domain.Outcome) (string, error) {
 	next := ""
 	err := s.Store.WithTx(ctx, func(tx *store.Tx) error {
 		r, err := s.load(ctx, tx.Q, actor, id)
@@ -371,6 +413,12 @@ func (s *Service) RejectInbox(ctx context.Context, actor *domain.User, id string
 		if err != nil {
 			return err
 		}
+		if o != nil {
+			o.ItemID, o.Title, o.SourceURL, o.SourceKey, o.DecidedAt = r.ID, r.Title, r.SourceURL, textnorm.SourceKey(r.SourceURL), s.Clock.Now()
+			if err := tx.InsertOutcome(ctx, actor.ID, o); err != nil {
+				return err
+			}
+		}
 		next = s.nextInbox(ctx, tx.Q, actor, id)
 		tx.AfterCommit(func() { s.removeFiles(keys) })
 		return nil
@@ -378,10 +426,49 @@ func (s *Service) RejectInbox(ctx context.Context, actor *domain.User, id string
 	return next, err
 }
 
-// WithdrawInbox is the API variant: deletes an own pending item, 404 once accepted.
-func (s *Service) WithdrawInbox(ctx context.Context, actor *domain.User, id string) error {
-	_, err := s.RejectInbox(ctx, actor, id)
-	return err
+// ListOutcomes returns the actor's Keep / Throw away decisions after the cursor, oldest first (40 §7).
+func (s *Service) ListOutcomes(ctx context.Context, actor *domain.User, after string, limit int) (domain.OutcomePage, error) {
+	afterID, err := store.ParseOutcomeCursor(after)
+	if err != nil {
+		return domain.OutcomePage{}, err
+	}
+	if limit < 1 || limit > 100 {
+		limit = 50
+	}
+	items, err := s.Store.R().ListOutcomes(ctx, actor.ID, afterID, limit)
+	if err != nil {
+		return domain.OutcomePage{}, err
+	}
+	next := after
+	if n := len(items); n > 0 {
+		next = strconv.FormatInt(items[n-1].ID, 10)
+	}
+	return domain.OutcomePage{Items: items, NextCursor: next}, nil
 }
 
-var _ = time.Second
+// GetAssistantBrief returns the user's "what to look for" text and the language they read (40 §8).
+func (s *Service) GetAssistantBrief(ctx context.Context, actor *domain.User) (domain.AssistantBrief, error) {
+	text, at, err := s.Store.R().GetAssistantBrief(ctx, actor.ID)
+	if err != nil {
+		return domain.AssistantBrief{}, err
+	}
+	lang := actor.UILanguage
+	if lang == "" {
+		lang = s.DefaultLang
+	}
+	if lang == "" {
+		lang = domain.LangEN
+	}
+	return domain.AssistantBrief{Text: text, Language: lang, UpdatedAt: at}, nil
+}
+
+// SetAssistantBrief stores the brief (trimmed; "" clears it). Over-long text is a validation error.
+func (s *Service) SetAssistantBrief(ctx context.Context, actor *domain.User, text string) error {
+	text = strings.TrimSpace(text)
+	if utf8.RuneCountInString(text) > domain.MaxAssistantBrief {
+		return &domain.ValidationError{Errors: []domain.Issue{issue("text", "too_long", "max", domain.MaxAssistantBrief)}}
+	}
+	return s.Store.WithTx(ctx, func(tx *store.Tx) error {
+		return tx.SetAssistantBrief(ctx, actor.ID, text, store.FormatTime(s.Clock.Now()))
+	})
+}

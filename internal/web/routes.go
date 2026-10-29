@@ -64,6 +64,7 @@ var Routes = []Route{
 	{"tokens.list", "GET", "/settings/tokens", Session},
 	{"tokens.create", "POST", "/settings/tokens", Session},
 	{"tokens.revoke", "POST", "/settings/tokens/{id}/revoke", Session},
+	{"assistant.brief", "POST", "/settings/assistant-brief", Session},
 	{"admin.categories", "GET", "/admin/categories", Admin},
 	{"admin.category.create", "POST", "/admin/categories", Admin},
 	{"admin.category.update", "POST", "/admin/categories/{id}/edit", Admin},

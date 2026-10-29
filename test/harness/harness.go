@@ -32,6 +32,7 @@ type Options struct {
 	IdP           *FakeIdP // reuse a running IdP (restart tests)
 	ListenAddr    string   // fixed address for restarts, e.g. 127.0.0.1:port
 	Debug         bool
+	Env           map[string]string // extra environment variables, e.g. API_RATE_LIMIT_PER_MIN
 }
 
 // Harness is one running server.
@@ -91,6 +92,9 @@ func Start(o Options) (*Harness, error) {
 			m["APP_TEMPLATES_DIR"] = o.WebDir
 			m["APP_ENV"] = "development"
 			m["LOG_FORMAT"] = "text"
+		}
+		if v, ok := o.Env[k]; ok {
+			return v, true
 		}
 		v, ok := m[k]
 		return v, ok

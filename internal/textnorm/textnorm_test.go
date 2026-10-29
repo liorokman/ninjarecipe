@@ -57,3 +57,36 @@ func TestTermsAndMatch(t *testing.T) {
 		t.Fatalf("EscapeLike %q", got)
 	}
 }
+
+func TestSourceKey(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"https://www.Example.com/ribs/?utm_source=x#top", "example.com/ribs"},
+		{"http://example.com/ribs", "example.com/ribs"},
+		{"https://example.com:443/ribs", "example.com/ribs"},
+		{"http://example.com:80/ribs", "example.com/ribs"},
+		{"https://example.com:8443/ribs", "example.com:8443/ribs"},
+		{"https://user:pw@example.com/ribs", "example.com/ribs"},
+		{"https://example.com", "example.com"},
+		{"https://example.com/", "example.com"},
+		{"https://example.com/a/./b/../ribs/", "example.com/a/ribs"},
+		{"https://example.com/%72ibs", "example.com/ribs"},
+		{"https://example.com/a%2fb", "example.com/a%2Fb"},
+		{"https://example.com/r?b=2&a=1&utm_medium=m&fbclid=z&ref=q", "example.com/r?a=1&b=2"},
+		{"https://example.com/r?id=7&UTM_Source=x", "example.com/r?id=7"},
+		{"https://BÜCHER.example/ribs", "xn--bcher-kva.example/ribs"},
+		{"  https://example.com/ribs  ", "example.com/ribs"},
+		{"", ""},
+		{"example.com/ribs", ""},
+		{"ftp://example.com/ribs", ""},
+		{"https:///ribs", ""},
+		{"https://exa mple.com/ribs", ""},
+	}
+	for _, c := range cases {
+		if got := SourceKey(c.in); got != c.want {
+			t.Errorf("SourceKey(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+	if SourceKey("http://www.example.com/x/") != SourceKey("https://example.com/x?utm_source=a") {
+		t.Error("equivalent URLs must share a key")
+	}
+}

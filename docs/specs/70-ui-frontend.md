@@ -187,6 +187,10 @@ will lose this recipe too." Buttons: **Keep it** (prominent, autofocus) and **De
   "Oven settings missing — add them before cooking". Categories/tags suggested by the assistant are pre-selected.
 - Bottom bar: **✓ Keep** (primary; a "Share with family too" checkbox next to it, off by default),
   **Edit, then keep**, **✕ Throw away** (opens a light `<dialog>` "Throw away this suggestion?").
+- The throw-away dialog also offers **optional** reasons as large single-choice chips (none selected; tapping a selected
+  chip clears it) and a one-line "Anything else? (optional)" field, wording in `10 §3 H3-AC2`. **Throw away**
+  submits immediately with whatever is filled in; a reason is never required. Without JS the same fields are
+  shown inline above the button.
 - After Keep or Throw away the server redirects to the next item (H3-AC4) or to the empty inbox ("All done!").
 
 ### 4.8 Menu & settings — `GET /settings`
@@ -197,6 +201,9 @@ The language button also appears in the bottom-nav menu sheet and on `/signin`.
 ### 4.9 Tokens — `GET /settings/tokens`
 Table of tokens; create form (name, scopes as checkboxes with plain explanations, expiry); after creation the full
 token is shown once in a read-only field with a "Copy" button and the warning "You won't see this again."
+Above the table: **"What should your assistant look for?"** — a textarea (≤ 2000, 5 rows) with the hint "For example:
+more smoked fish, pizza dough ideas, nothing too spicy." and a **Save** button (`POST /settings/assistant-brief`,
+story H6).
 
 ### 4.10 Sign-in and error pages
 - `/signin`: app logo, one big **"Sign in" / "התחברות"** button, language button, and the small line

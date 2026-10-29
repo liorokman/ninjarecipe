@@ -28,7 +28,7 @@ func TestFreshMigrateSeedsCategories(t *testing.T) {
 		t.Fatalf("seed: %d categories, %d tags", cats, tags)
 	}
 	var v int
-	if err := d.Reader.QueryRow(`SELECT MAX(version_id) FROM goose_db_version`).Scan(&v); err != nil || v != 2 {
+	if err := d.Reader.QueryRow(`SELECT MAX(version_id) FROM goose_db_version`).Scan(&v); err != nil || v != 3 {
 		t.Fatalf("goose version %d err %v", v, err)
 	}
 	// idempotent
@@ -93,5 +93,55 @@ func TestBackup(t *testing.T) {
 	dest := t.TempDir() + "/b.db"
 	if err := d.Backup(context.Background(), dest); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestMigration0003UpDownUp(t *testing.T) {
+	ctx := context.Background()
+	d := openMigrated(t)
+	mustExec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := d.Writer.Exec(q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	mustExec(`INSERT INTO users (id, oidc_issuer, oidc_subject, display_name) VALUES ('u1','i','s','U')`)
+	mustExec(`INSERT INTO recipes (id, owner_id, title, source_url, source_key) VALUES ('r1','u1','T','https://e.com/x','e.com/x')`)
+	mustExec(`INSERT INTO inbox_outcomes (user_id, item_id, title, outcome, reason, note) VALUES ('u1','r1','T','rejected','poor_details','n')`)
+
+	// constraints
+	for _, bad := range []string{
+		`INSERT INTO inbox_outcomes (user_id, item_id, title, outcome, reason) VALUES ('u1','x','T','rejected','whatever')`,
+		`INSERT INTO inbox_outcomes (user_id, item_id, title, outcome, reason) VALUES ('u1','x','T','kept','poor_details')`,
+		`INSERT INTO inbox_outcomes (user_id, item_id, title, outcome, edited) VALUES ('u1','x','T','rejected',1)`,
+		`INSERT INTO inbox_outcomes (user_id, item_id, title, outcome) VALUES ('u1','x','T','maybe')`,
+	} {
+		if _, err := d.Writer.Exec(bad); err == nil {
+			t.Errorf("must violate a CHECK: %s", bad)
+		}
+	}
+	// outcomes go with their user
+	mustExec(`PRAGMA foreign_keys=ON`)
+
+	p, err := d.provider()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.DownTo(ctx, 2); err != nil {
+		t.Fatalf("down: %v", err)
+	}
+	var n int
+	if err := d.Reader.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE name IN ('inbox_outcomes','idx_recipes_source_key')`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("down must remove the new objects: %d %v", n, err)
+	}
+	if err := d.Reader.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE name='idx_recipes_source_url'`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("down must restore the old index: %d %v", n, err)
+	}
+	if err := d.Migrate(ctx); err != nil {
+		t.Fatalf("up again: %v", err)
+	}
+	var key string
+	if err := d.Reader.QueryRow(`SELECT COALESCE(source_key,'') FROM recipes WHERE id='r1'`).Scan(&key); err != nil || key != "" {
+		t.Fatalf("source_key is empty after a down/up cycle until the startup backfill: %q %v", key, err)
 	}
 }

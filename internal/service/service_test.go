@@ -504,7 +504,7 @@ func TestInboxLifecycle(t *testing.T) {
 	if len(inbox) != 1 {
 		t.Fatalf("inbox %d", len(inbox))
 	}
-	nx, err = e.svc.RejectInbox(e.ctx, alice, inbox[0].ID)
+	nx, err = e.svc.RejectInbox(e.ctx, alice, inbox[0].ID, "", "")
 	if err != nil || nx != "" {
 		t.Fatalf("reject: %v %q", err, nx)
 	}

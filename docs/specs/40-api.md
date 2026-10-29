@@ -99,7 +99,7 @@ a "Show more" button carrying the next `cursor` (`hx-get`, `hx-swap="outerHTML"`
 | `GET /inbox/{id}/edit` | owner of item | Editor for the item |
 | `POST /inbox/{id}/edit` | owner of item | Saves the edits **and accepts** in one transaction (§2.5) |
 | `POST /inbox/{id}/accept` | owner of item | Body `share=1` optional. Sets `status='active'` (and visibility), indexes FTS, publishes `InboxItemAccepted`. Redirect: `303 /inbox/{nextID}` (oldest remaining) or `303 /inbox` with flash when empty |
-| `POST /inbox/{id}/reject` | owner of item | Hard delete; same redirect as accept |
+| `POST /inbox/{id}/reject` | owner of item | Body `reason` (optional, one of the codes in §7) and `note` (optional, ≤ 200). Hard delete and write the `rejected` outcome (`30 §5a`); same redirect as accept. Unknown `reason` → treated as absent |
 
 The inbox badge count (pending items of the actor) is rendered in the layout on every page.
 
@@ -157,6 +157,7 @@ Portion scaling (`70 §5.4`) multiplies `amount` only; lines without an amount a
 | `GET /settings/tokens` | session | Own tokens (name, prefix, scopes, created, last used, expiry, status) |
 | `POST /settings/tokens` | session | Body `name`, `scopes` (repeated), `expires_in_days` (`0|30|90|365`). Renders the page with the **new token shown once** |
 | `POST /settings/tokens/{id}/revoke` | token owner | Sets `revoked_at` |
+| `POST /settings/assistant-brief` | session | Body `text` (≤ 2000, trimmed; empty clears it). Sets `users.assistant_brief` and `assistant_brief_updated_at`. `303 /settings/tokens` with flash "Saved" |
 | `GET /admin/categories` | admin | List with rename / icon / order / delete |
 | `POST /admin/categories` | admin | Create (`slug`, `name`, `name_he`, `icon`, `sort_order`) |
 | `POST /admin/categories/{id}/edit` | admin | Update the same fields except `slug` |
@@ -169,10 +170,14 @@ Portion scaling (`70 §5.4`) multiplies `amount` only; lines without an amount a
 | `POST /api/v1/inbox` | `inbox:write` | Submit a recipe to the token owner's inbox (§4) |
 | `GET /api/v1/inbox` | `inbox:write` | List own pending inbox items (`RecipeSummary[]`) |
 | `DELETE /api/v1/inbox/{id}` | `inbox:write` | Withdraw an own pending item → 204 (404 if already accepted/rejected) |
-| `GET /api/v1/recipes` | `recipes:read` | Search recipes visible to the user. Params: `q`, `source_url` (exact match), `scope`, `category`, `cursor`, `limit` (1–100, default 50). Returns `{items: RecipeSummary[], next_cursor}` |
+| `GET /api/v1/inbox/outcomes` | `inbox:write` | Keep / Throw away decisions on the user's inbox items (§7) |
+| `GET /api/v1/recipes` | `recipes:read` | Search recipes visible to the user. Params: `q`, `source_url` (matched by source key, §4.3), `scope`, `category`, `cursor`, `limit` (1–100, default 50). Returns `{items: RecipeSummary[], next_cursor}` |
 | `GET /api/v1/recipes/{id}` | `recipes:read` | Full `Recipe` |
 | `GET /api/v1/categories` | any valid token | `{categories: [{slug, name, name_he, icon}], tags: [string]}` (tags in use on recipes the user can view) |
+| `GET /api/v1/assistant/brief` | any valid token | What the user wants the assistant to look for (§8) |
 | `GET /api/v1/meta/oven` | public | The `25 §4` table as JSON (the same structure embedded in the editor) |
+| `GET /api/v1/openapi.json` | public | OpenAPI 3.1 description of this API (§9.1) |
+| `POST /api/v1/mcp` | any valid token; per tool as §9.2 | MCP server for AI assistants (§9.2). `GET`/`DELETE` → 405 |
 
 Bearer handling, scopes, rate limit: `20 §6`. A token can never accept/reject inbox items, edit, share or delete
 recipes; those are browser-only by design.
@@ -183,12 +188,15 @@ Headers: `Authorization: Bearer nwr_…`, `Content-Type: application/json`, opti
 
 Behaviour:
 1. If `Idempotency-Key` is present and an item/recipe of this user already has that `import_key` → `200` with that item's `ImportResult` (no new item).
-2. If `source_url` is present and any recipe of this user (any status) has the same `source_url` → `409` problem with
-   `existing_id`, unless query `?allow_duplicate=1`.
-3. Validate (limits `20 §8`, oven rules `25 §4`). Errors → `422`.
-4. Process images **synchronously**, in order. An image that fails (fetch error, SSRF block, too large, unsupported type)
+2. If `source_url` is present and any recipe of this user (any status) has the same source key (§4.3) → `409` problem
+   `duplicate` with `existing_id`, unless query `?allow_duplicate=1`.
+3. Otherwise, if an `inbox_outcomes` row of this user has the same source key → `409` problem `previously-reviewed`
+   with `outcome` (`kept`|`rejected`), `decided_at` and, when given, `reason`. `allow_duplicate` does **not** override
+   this: a recipe the household threw away (or kept and later deleted) is never offered again through the API.
+4. Validate (limits `20 §8`, oven rules `25 §4`). Errors → `422`.
+5. Process images **synchronously**, in order. An image that fails (fetch error, SSRF block, too large, unsupported type)
    does not fail the request; it is reported in `warnings[]`.
-5. Insert as `status='inbox'`, `visibility='private'`, owner = token user, `recipe_labels.source='assistant'`.
+6. Insert as `status='inbox'`, `visibility='private'`, owner = token user, `recipe_labels.source='assistant'`.
    Publish `InboxItemReceived`. `201` with `ImportResult`.
 
 ### 4.1 `RecipeImport` (request)
@@ -242,6 +250,22 @@ are always rejected** — an assistant on the LAN must send `data_base64` instea
 }
 ```
 
+### 4.3 Source key (duplicate detection)
+
+`source_key` is derived from `source_url` by one function (`internal/textnorm.SourceKey`), used for recipes created
+in the browser, API imports, outcomes, and the `source_url` search parameter. `NULL` when `source_url` is empty or does
+not parse as an absolute http(s) URL.
+
+1. Drop the scheme (`http` and `https` are the same recipe), userinfo, the default port and the fragment.
+2. Host: lower-case, IDNA to ASCII, strip one leading `www.`.
+3. Path: remove dot segments, decode percent-encoded unreserved characters, remove a trailing `/` (except for `/`).
+4. Query: drop `utm_*`, `fbclid`, `gclid`, `mc_cid`, `mc_eid`, `igshid`, `ref`; sort the remaining parameters by
+   name, then value. Omit `?` when none remain.
+5. Result: `host + path [+ "?" + query]`, e.g. `https://www.Example.com/ribs/?utm_source=x#top` → `example.com/ribs`.
+
+Sites that serve one recipe at several paths (print pages, AMP) are not merged. Assistants should send the page's
+`<link rel="canonical">` URL as `source_url`.
+
 ## 5. Errors
 
 ```json
@@ -259,7 +283,8 @@ are always rejected** — an assistant on the LAN must send `data_base64` instea
 ```
 
 `type` URIs: `…/problems/validation`, `unauthorized`, `forbidden`, `not-found`, `conflict`, `duplicate`
-(adds `existing_id`), `too-large`, `unsupported-media-type`, `rate-limited`, `internal`. `reason` is English;
+(adds `existing_id`), `previously-reviewed` (adds `outcome`, `decided_at`, `reason`), `too-large`,
+`unsupported-media-type`, `rate-limited`, `internal`. `reason` is English;
 clients should use `code` + `params`.
 
 | Status | When |
@@ -272,7 +297,7 @@ clients should use `code` + `params`.
 | 403 | Token lacks the scope; or session user may view but not modify |
 | 404 | Not found or not viewable |
 | 405 | Method not allowed (from the mux) |
-| 409 | Duplicate `source_url`; recipe version conflict |
+| 409 | Duplicate `source_url`; source already kept or thrown away; recipe version conflict |
 | 413 | Body or file too large |
 | 415 | Unsupported image type |
 | 422 | Validation failed |
@@ -289,3 +314,98 @@ source_url, updated_at}`.
 unit, item, raw_text}], steps: [{text, timer_seconds}], oven_stages: [OvenStage], images: [{id, thumb_url, full_url,
 width, height, caption}], version, created_at, created_by, updated_by}`. Cook logs are not exposed in v1.
 Image URLs are absolute, built from `APP_BASE_URL`.
+
+## 7. Inbox outcomes (`GET /api/v1/inbox/outcomes`)
+
+Lets the assistant learn what the household keeps and throws away. Params: `after` (cursor from a previous response;
+omit for the start), `limit` (1–100, default 50). Items in decision order (oldest first).
+
+```json
+{
+  "items": [
+    {
+      "cursor": "42",
+      "item_id": "7b8e192a-3c48-4384-a140-5bbf2f0739c9",
+      "recipe_id": null,
+      "title": "Smoked short ribs",
+      "source_url": "https://example.com/ribs",
+      "outcome": "rejected",
+      "reason": "too_complicated",
+      "note": "Two days of prep",
+      "edited": false,
+      "shared": false,
+      "decided_at": "2026-10-29T18:02:11.000Z"
+    }
+  ],
+  "next_cursor": "42"
+}
+```
+
+- `recipe_id` = `item_id` when the outcome is `kept` and the recipe still exists; otherwise `null`.
+- `next_cursor` is the cursor of the last item, or the `after` value when `items` is empty (`null` when there is none
+  yet), so the assistant stores it and asks again later. A malformed `after` or a `limit` outside 1–100 → 400.
+- `source_url` is the URL the assistant submitted (30 §5a).
+- `reason` is `null` or one of the codes below. `note` is free text in any language (≤ 200).
+
+| `reason` | Shown to the user as (`10 §3 H3`) |
+|---|---|
+| `not_our_taste` | Not our taste |
+| `too_complicated` | Too complicated |
+| `not_for_our_oven` | Doesn't suit our oven |
+| `already_have` | We already have one like it |
+| `poor_details` | Missing or wrong details |
+
+## 8. Assistant brief (`GET /api/v1/assistant/brief`)
+
+```json
+{ "text": "More smoked fish. Neapolitan dough variations. Nothing with pork.", "language": "he", "updated_at": "2026-10-29T17:40:00.000Z" }
+```
+
+`text` is the user's free text from `/settings/tokens` (`""` when not set; `updated_at` then `null`). `language` is
+`users.ui_language`, else `APP_DEFAULT_LANG`: the language the user reads, so the assistant can prefer recipes in it.
+
+## 9. Discovery for AI assistants
+
+### 9.1 OpenAPI (`GET /api/v1/openapi.json`)
+
+OpenAPI 3.1, hand-maintained as `internal/api/openapi.json` (embedded). Covers every `/api/v1` route except `/mcp`,
+with the DTOs of §4, §6, §7, §8 and the problem types of §5. `servers[0].url` is set to `${APP_BASE_URL}/api/v1` when
+served. `Cache-Control: no-cache`. A test keeps it in step with the route table (`60 §6.3`).
+
+### 9.2 MCP server (`POST /api/v1/mcp`)
+
+An [MCP](https://modelcontextprotocol.io) server so assistants such as Hermes can use the API as tools without custom
+HTTP code.
+
+- Transport: MCP **Streamable HTTP**, stateless: no `Mcp-Session-Id`, no server-initiated messages, responses are
+  `application/json` (no SSE). `GET` and `DELETE` → 405, as the transport allows.
+- Auth, scopes, rate limit and body limit as every `/api/v1` route (`20 §6`): `Authorization: Bearer nwr_…`. The MCP
+  request counts once against the rate limit, however many tools it calls. A tool whose scope the token lacks is left
+  out of `tools/list`; calling it anyway returns an `isError` result carrying the `forbidden` problem.
+- Implemented in `internal/mcp` with `github.com/modelcontextprotocol/go-sdk`. Each tool runs its REST twin's handler
+  in-process (`internal/api` passes `internal/mcp` a dispatcher), so results, validation and errors are identical and
+  there is no MCP-only behaviour. A 204 becomes `{"ok":true}`. Tool input schemas are the REST request schemas:
+  `submit_recipe` embeds `RecipeImport` from `openapi.json` (as `$defs`).
+- Tool errors are results with `isError: true` whose text content is the problem JSON of §5, so the assistant sees
+  `code` and `params`.
+
+| Tool | REST twin | Scope |
+|---|---|---|
+| `get_assistant_brief` | `GET /assistant/brief` | any |
+| `list_categories` | `GET /categories` | any |
+| `get_oven_reference` | `GET /meta/oven` | any |
+| `search_recipes` | `GET /recipes` | `recipes:read` |
+| `get_recipe` | `GET /recipes/{id}` | `recipes:read` |
+| `submit_recipe` | `POST /inbox` (args: `recipe` = `RecipeImport`, optional `idempotency_key`, `allow_duplicate`) | `inbox:write` |
+| `list_inbox` | `GET /inbox` | `inbox:write` |
+| `withdraw_inbox_item` | `DELETE /inbox/{id}` | `inbox:write` |
+| `list_outcomes` | `GET /inbox/outcomes` | `inbox:write` |
+
+Server `instructions` (sent on `initialize`, English, fixed text):
+
+> You help a household that cooks on a Ninja Woodfire OO101 outdoor oven find recipes. Before searching, read
+> get_assistant_brief and list_outcomes to learn what they want and what they threw away. Before submitting, check
+> search_recipes with the source URL. Always fill oven_stages using get_oven_reference: map the recipe's method to
+> the oven's modes and stay within the listed ranges. Send the page's canonical URL as source_url and use known
+> category slugs from list_categories. Submissions go to the user's review list; you cannot keep, share, edit or
+> delete recipes.

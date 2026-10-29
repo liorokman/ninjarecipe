@@ -525,4 +525,11 @@ Not automatable (manual, 70 §10): real wake lock duration, vibration, camera ca
 - [ ] `task ci` and `task test:ui` green on this machine.
 
 ## 9. Change requests
+- **CR-1 (2026-10-29), assistant feedback loop**: decisions 4.13–4.16 in `docs/specs/open-questions.md`. New migration
+  `0003` (`30 §5a`), source-key duplicate rule and `previously-reviewed` 409 (`40 §4`), `GET /api/v1/inbox/outcomes`,
+  `GET /api/v1/assistant/brief`, `openapi.json`, `/api/v1/mcp` (`40 §7–§9`), throw-away reasons and brief textarea
+  (`70 §4.7, §4.9`), tests `60 §6.3` items 4 and 6. **Implemented 2026-10-29.** Notes: the reason list reaches the inbox template through the
+  `rejectReasons` template func (no view field to forget); MCP tools run the REST handlers through an in-process dispatcher
+  (`internal/api/openapi.go`), with the SDK's localhost check disabled because `HostCheck` already pins the host; `test/harness`
+  gained `Options.Env`; `test/ui/specs/inbox.spec.mjs` covers the dialog, the no-JS fallback and the brief box.
 See `docs/contract-questions.md` (rulings 2026-10-27: Title()/Lang()/Dir() methods on page views, camelCase config JSON, `deref`, fmtQty/fmtUnit canonical format, ImageView.RecipeID).

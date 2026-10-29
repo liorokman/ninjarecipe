@@ -14,7 +14,7 @@
       <div class="inbox-buttons">
         <button type="submit" class="btn btn-primary btn-xl" data-test="inbox-keep">{{template "icon" "check"}}{{T "inbox.keep"}}</button>
         <a class="btn btn-secondary btn-lg" href="{{url "inbox.edit" .RecipeBody.ID}}" data-test="inbox-edit">{{template "icon" "edit"}}{{T "inbox.edit_keep"}}</a>
-        <button type="button" class="btn btn-quiet btn-lg" data-action="open-dialog" data-target="reject-dialog" data-test="inbox-reject">{{template "icon" "x"}}{{T "inbox.throw_away"}}</button>
+        <button type="button" class="btn btn-quiet btn-lg js-only" data-action="open-dialog" data-target="reject-dialog" data-test="inbox-reject">{{template "icon" "x"}}{{T "inbox.throw_away"}}</button>
       </div>
     </div>
   </form>
@@ -22,10 +22,20 @@
 <dialog id="reject-dialog" class="dialog" aria-labelledby="reject-title" data-test="reject-dialog">
   <div class="dialog-body">
     <h2 id="reject-title">{{T "inbox.throw_title"}}</h2>
-    <div class="dialog-actions">
-      <button type="button" class="btn btn-primary btn-lg" data-action="close-dialog" autofocus>{{T "inbox.keep_looking"}}</button>
-      <form method="post" action="{{url "inbox.reject" .RecipeBody.ID}}"><button type="submit" class="btn btn-danger btn-lg" data-test="reject-confirm">{{T "inbox.throw_away"}}</button></form>
-    </div>
+    <form method="post" action="{{url "inbox.reject" .RecipeBody.ID}}" class="stack" data-test="reject-form">
+      <fieldset class="field">
+        <legend class="field-label">{{T "inbox.reason_legend"}}</legend>
+        <div class="chips" data-test="reject-reasons">{{range rejectReasons}}
+          <label class="chip"><input type="radio" name="reason" value="{{.}}" data-clearable data-test="reject-reason-{{.}}"><span>{{T (printf "inbox.reason.%s" .)}}</span></label>{{end}}
+        </div>
+      </fieldset>
+      <div class="field"><label class="field-label" for="reject-note">{{T "inbox.note_label"}}</label>
+        <input id="reject-note" name="note" type="text" maxlength="200" dir="auto" autocomplete="off" data-test="reject-note"></div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-primary btn-lg js-only" data-action="close-dialog" autofocus>{{T "inbox.keep_looking"}}</button>
+        <button type="submit" class="btn btn-danger btn-lg" data-test="reject-confirm">{{T "inbox.throw_away"}}</button>
+      </div>
+    </form>
   </div>
 </dialog>
 {{template "lightbox"}}

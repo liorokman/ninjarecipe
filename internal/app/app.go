@@ -73,12 +73,20 @@ func New(ctx context.Context, cfg *config.Config, o Options) (*Server, error) {
 		return nil, err
 	}
 	st := store.New(d.Reader, d.Writer)
+	if err := st.WithTx(ctx, func(tx *store.Tx) error {
+		_, err := tx.BackfillSourceKeys(ctx)
+		return err
+	}); err != nil {
+		d.Close()
+		return nil, err
+	}
 	clock := o.Clock
 	if clock == nil {
 		clock = domain.SystemClock{}
 	}
 	svc := service.New(st, cfg.DataDir, cfg.BaseURL, clock)
 	svc.MaxImages = cfg.MaxImagesPerRecipe
+	svc.DefaultLang = cfg.DefaultLang
 	svc.Proc = images.NewProcessor(cfg.ImageWorkers, cfg.ImageMaxPixels, int64(cfg.MaxImageMB)<<20)
 	ver := o.Version
 	if ver == "" {
@@ -109,6 +117,7 @@ func New(ctx context.Context, cfg *config.Config, o Options) (*Server, error) {
 	sessions := &auth.Sessions{Store: st, Clock: clock, Idle: cfg.SessionIdleTTL, Max: cfg.SessionMaxTTL, Secure: cfg.Secure()}
 	app := &web.App{Cfg: cfg, Svc: svc, Cat: cat, R: rd, OIDC: oidc, Sessions: sessions, DB: d, Version: ver, Commit: o.Commit, BuildDate: o.Date}
 	apiApp := api.New(svc, cat, cfg.BaseURL, cfg.APIMaxBodyMB, cfg.APIRateLimitPerMin)
+	apiApp.Version = ver
 
 	mux := http.NewServeMux()
 	app.Register(mux)

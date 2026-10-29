@@ -164,7 +164,7 @@ func TestAPIMatrix(t *testing.T) {
 	}
 	if st, _, b := api(c, "DELETE", "/api/v1/inbox/"+res.ID, ""); st != 204 {
 		u, _ := h.Svc().Store.R().GetUser(ctxb, alice.ID)
-		_, e2 := h.Svc().RejectInbox(ctxb, u, res.ID)
+		_, e2 := h.Svc().RejectInbox(ctxb, u, res.ID, "", "")
 		t.Fatalf("withdraw %d %s direct=%v", st, b, e2)
 	}
 	if st, _, _ := api(c, "DELETE", "/api/v1/inbox/"+res.ID, ""); st != 404 {

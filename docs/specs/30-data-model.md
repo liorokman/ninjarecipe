@@ -25,6 +25,7 @@ Other documents refer to this one and must not restate the schema. Behaviour tha
 erDiagram
     users ||--o{ sessions : has
     users ||--o{ api_tokens : owns
+    users ||--o{ inbox_outcomes : decided
     users |o--o{ recipes : owns
     users ||--o{ recipe_favourites : marks
     users ||--o{ recipe_views : views
@@ -44,7 +45,8 @@ erDiagram
 | Event | Effect (all in one write transaction; image files removed after commit, see `20 §9`) |
 |---|---|
 | Recipe deleted (hard) | Row deleted; FK `ON DELETE CASCADE` removes ingredients, steps, stages, images rows, labels links, cook logs, favourites, views; FTS row deleted by the service. |
-| Inbox item rejected | Same as recipe deleted. |
+| Inbox item kept | `status='active'`; an `inbox_outcomes` row (`kept`, `edited`, `shared`) is written in the same transaction (§5a). |
+| Inbox item rejected | Same as recipe deleted, plus an `inbox_outcomes` row (`rejected`, optional `reason`/`note`) in the same transaction (§5a). |
 | Cook-log entry deleted | Its photo (`recipe_images` row with `kind='cook_log'`) and files are deleted too. |
 | Recipe **unshared** (`shared → private`) | All `recipe_favourites` and `recipe_views` rows of users **other than the owner** for that recipe are deleted. Cook logs are kept (they become visible to the owner only, since only the owner can view the recipe). |
 | User deleted (`recipes user delete <id>` CLI only; there is no automatic deletion) | Service procedure, in order: (1) hard-delete every recipe the user owns that is `private` or `status='inbox'` (including images); (2) set `owner_id = NULL` on their `shared` recipes; (3) delete the user row (cascades sessions, tokens, cook logs, favourites, views). The FK `ON DELETE SET NULL` on `recipes.owner_id` is a safety net only. |
@@ -315,6 +317,65 @@ DELETE FROM labels WHERE type = 'category' AND created_by IS NULL;
 
 "Smoked" is not a category: it is derived from the stages (any stage `smoker` or `woodfire = 1`) and appears on the
 home screen as a virtual tile (see `70 §4.1`). Hebrew names are suggestions for native review.
+
+## 5a. Migration `0003_assistant_feedback.sql`
+
+Supports the assistant feedback loop (decisions 4.13–4.15): duplicate detection on a normalized source URL, a durable
+record of every Keep / Throw away decision, and the per-user "what to look for" text. Written as a new migration so it
+applies whether or not `0001`/`0002` have reached production.
+
+```sql
+-- +goose Up
+-- +goose StatementBegin
+ALTER TABLE recipes ADD COLUMN source_key TEXT;          -- normalized source_url (40 §4.3); set by the service on every write
+DROP INDEX idx_recipes_source_url;
+CREATE INDEX idx_recipes_source_key ON recipes(owner_id, source_key) WHERE source_key IS NOT NULL;
+
+ALTER TABLE users ADD COLUMN assistant_brief TEXT NOT NULL DEFAULT '';  -- "What should your assistant look for?" (40 §8)
+ALTER TABLE users ADD COLUMN assistant_brief_updated_at TEXT;
+
+-- One row per Keep / Throw away decision on an inbox item. The row outlives the hard delete of a thrown-away item,
+-- so the same recipe is not offered again (40 §4 rule 3), and it is the feed behind GET /api/v1/inbox/outcomes (40 §7).
+CREATE TABLE inbox_outcomes (
+    id         INTEGER PRIMARY KEY,                       -- monotonic; the API cursor
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_id    TEXT NOT NULL,                             -- the item's recipes.id; no FK (a thrown-away item is gone)
+    title      TEXT NOT NULL,                             -- at decision time (after edits, for "Edit, then keep")
+    source_url TEXT,                                      -- as the assistant submitted it (before any edit while keeping)
+    source_key TEXT,                                      -- normalized source_url
+    outcome    TEXT NOT NULL CHECK (outcome IN ('kept','rejected')),
+    reason     TEXT CHECK (reason IN ('not_our_taste','too_complicated','not_for_our_oven','already_have','poor_details')),
+    note       TEXT NOT NULL DEFAULT '',                  -- optional, ≤ 200
+    edited     INTEGER NOT NULL DEFAULT 0 CHECK (edited IN (0,1)),   -- kept via "Edit, then keep"
+    shared     INTEGER NOT NULL DEFAULT 0 CHECK (shared IN (0,1)),   -- kept with "Share with family too"
+    decided_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    CHECK (outcome = 'rejected' OR (reason IS NULL AND note = '')),
+    CHECK (outcome = 'kept' OR (edited = 0 AND shared = 0))
+);
+CREATE INDEX idx_inbox_outcomes_user   ON inbox_outcomes(user_id, id);
+CREATE INDEX idx_inbox_outcomes_source ON inbox_outcomes(user_id, source_key) WHERE source_key IS NOT NULL;
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+DROP TABLE IF EXISTS inbox_outcomes;
+ALTER TABLE users DROP COLUMN assistant_brief_updated_at;
+ALTER TABLE users DROP COLUMN assistant_brief;
+DROP INDEX IF EXISTS idx_recipes_source_key;
+ALTER TABLE recipes DROP COLUMN source_key;
+CREATE INDEX idx_recipes_source_url ON recipes(owner_id, source_url) WHERE source_url IS NOT NULL;
+-- +goose StatementEnd
+```
+
+Notes:
+- `source_key` cannot be computed in SQL. The store sets it on every insert and update of a recipe. After migrations and
+  before the listener opens, startup sets it for every row with `source_url IS NOT NULL AND source_key IS NULL` (one write
+  transaction; a no-op once done; rows whose URL is not an absolute http(s) URL stay `NULL`).
+- When an item is kept with "Edit, then keep" and the user changed its source URL, the outcome still records the URL the
+  assistant submitted, so resubmitting the original is refused; the recipe itself guards the edited URL (40 §4 rule 2).
+- Outcome rows are never edited or pruned. They are deleted only with their user. Withdrawing an item through the API
+  (`DELETE /api/v1/inbox/{id}`) writes no outcome: the assistant already knows.
+- Keeping an item and later deleting the recipe leaves its `kept` row, so the recipe is not offered again.
 
 ## 6. Derived values (computed in queries, not stored)
 

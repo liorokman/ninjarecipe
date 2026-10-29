@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/liorokman/ninjarecipe/internal/domain"
+	"github.com/liorokman/ninjarecipe/internal/textnorm"
 )
 
 const recipeSelect = `SELECT r.id, COALESCE(r.owner_id,''), r.status, r.visibility, r.title, r.description, r.notes, r.language,
@@ -128,10 +129,10 @@ func (q Q) loadChildren(ctx context.Context, r *domain.Recipe) error {
 // InsertRecipe writes the recipe row and children; labels are attached separately via SetRecipeLabels.
 func (q Q) InsertRecipe(ctx context.Context, r *domain.Recipe) error {
 	_, err := q.q.ExecContext(ctx, `INSERT INTO recipes (id, owner_id, status, visibility, title, description, notes, language, servings, prep_minutes,
-		source_url, source_name, import_key, version, categorized_at, created_by, updated_by, created_at, updated_at)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		source_url, source_key, source_name, import_key, version, categorized_at, created_by, updated_by, created_at, updated_at)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		r.ID, nullStr(r.OwnerID), r.Status, r.Visibility, r.Title, r.Description, r.Notes, r.Language, nullInt(r.Servings), nullInt(r.PrepMinutes),
-		nullStr(r.SourceURL), nullStr(r.SourceName), nullStr(r.ImportKey), r.Version, nullTime(r.CategorizedAt), nullStr(r.CreatedBy), nullStr(r.UpdatedBy),
+		nullStr(r.SourceURL), nullStr(textnorm.SourceKey(r.SourceURL)), nullStr(r.SourceName), nullStr(r.ImportKey), r.Version, nullTime(r.CategorizedAt), nullStr(r.CreatedBy), nullStr(r.UpdatedBy),
 		FormatTime(r.CreatedAt), FormatTime(r.UpdatedAt))
 	if err != nil {
 		return err
@@ -142,9 +143,9 @@ func (q Q) InsertRecipe(ctx context.Context, r *domain.Recipe) error {
 // UpdateRecipe updates fields and replaces children when r.Version matches the stored version; the stored
 // version becomes r.Version+1. Returns ErrConflict on mismatch, ErrNotFound when the row does not exist.
 func (q Q) UpdateRecipe(ctx context.Context, r *domain.Recipe) error {
-	res, err := q.q.ExecContext(ctx, `UPDATE recipes SET title=?, description=?, notes=?, language=?, servings=?, prep_minutes=?, source_url=?, source_name=?,
+	res, err := q.q.ExecContext(ctx, `UPDATE recipes SET title=?, description=?, notes=?, language=?, servings=?, prep_minutes=?, source_url=?, source_key=?, source_name=?,
 		updated_by=?, updated_at=?, version=version+1 WHERE id=? AND version=?`,
-		r.Title, r.Description, r.Notes, r.Language, nullInt(r.Servings), nullInt(r.PrepMinutes), nullStr(r.SourceURL), nullStr(r.SourceName),
+		r.Title, r.Description, r.Notes, r.Language, nullInt(r.Servings), nullInt(r.PrepMinutes), nullStr(r.SourceURL), nullStr(textnorm.SourceKey(r.SourceURL)), nullStr(r.SourceName),
 		nullStr(r.UpdatedBy), FormatTime(r.UpdatedAt), r.ID, r.Version)
 	if err != nil {
 		return err
@@ -247,11 +248,45 @@ func (q Q) FindByImportKey(ctx context.Context, ownerID, key string) (*domain.Re
 	return q.GetRecipe(ctx, id)
 }
 
-// FindBySourceURL returns the id of any recipe of the owner (any status) with this source URL.
-func (q Q) FindBySourceURL(ctx context.Context, ownerID, url string) (string, error) {
+// FindBySourceKey returns the id of any recipe of the owner (any status) with this source key (40 §4.3).
+func (q Q) FindBySourceKey(ctx context.Context, ownerID, key string) (string, error) {
 	var id string
-	err := q.q.QueryRowContext(ctx, `SELECT id FROM recipes WHERE owner_id=? AND source_url=? LIMIT 1`, ownerID, url).Scan(&id)
+	err := q.q.QueryRowContext(ctx, `SELECT id FROM recipes WHERE owner_id=? AND source_key=? ORDER BY created_at LIMIT 1`, ownerID, key).Scan(&id)
 	return id, notFound(err)
+}
+
+// BackfillSourceKeys sets source_key on rows that have a source_url but no key yet (30 §5a). Returns rows changed.
+func (q Q) BackfillSourceKeys(ctx context.Context) (int, error) {
+	rows, err := q.q.QueryContext(ctx, `SELECT id, source_url FROM recipes WHERE source_url IS NOT NULL AND source_key IS NULL`)
+	if err != nil {
+		return 0, err
+	}
+	type pair struct{ id, url string }
+	var todo []pair
+	for rows.Next() {
+		var p pair
+		if err := rows.Scan(&p.id, &p.url); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		todo = append(todo, p)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, p := range todo {
+		key := textnorm.SourceKey(p.url)
+		if key == "" {
+			continue // not an absolute http(s) URL: stays NULL (and is re-checked, cheaply, at the next start)
+		}
+		if _, err := q.q.ExecContext(ctx, `UPDATE recipes SET source_key=? WHERE id=?`, key, p.id); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
 }
 
 // InboxIDs lists the pending inbox item ids of a user, oldest first.
