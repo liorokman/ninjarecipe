@@ -1,7 +1,7 @@
 {
   "services": {
     "recipes": {
-      "image": "ghcr.io/liorokman/ninjarecipe:1.0.0",
+      "image": "ghcr.io/liorokman/ninjarecipe:1.1.0",
       "container_name": "recipes",
       "restart": "unless-stopped",
       "read_only": true,
