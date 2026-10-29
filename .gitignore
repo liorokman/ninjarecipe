@@ -10,3 +10,4 @@ tmp/
 .DS_Store
 deploy/dev/.env
 test/ui/node_modules/
+/idiotbox/
