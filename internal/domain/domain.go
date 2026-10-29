@@ -142,7 +142,9 @@ type Label struct {
 	NameHe    string
 	Icon      string
 	SortOrder int
-	Source    string // recipe_labels.source when attached to a recipe
+	// Description (category) tells the categorizer what belongs here; optional.
+	Description string
+	Source      string // recipe_labels.source when attached to a recipe
 }
 
 // LocalName returns the category name for the language.

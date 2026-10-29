@@ -396,3 +396,24 @@ Notes:
   `slug = name` after normalization. Tags are created on first use by any user; there is no tag management UI in v1.
 - A tag with no remaining `recipe_labels` rows is deleted by the hourly maintenance job.
 - Limits per recipe: ≤ 5 categories, ≤ 20 tags (`20 §8`).
+
+## 5b. Migration `0004_categorizer_settings.sql`
+
+Supports admin-edited auto-categorization (decision 4.18, `20 §15`).
+
+```sql
+-- +goose Up
+CREATE TABLE app_settings (
+    key        TEXT PRIMARY KEY,          -- 'categorizer.enabled|url|api_key|model|threshold'
+    value      TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_by TEXT REFERENCES users(id) ON DELETE SET NULL
+);
+ALTER TABLE labels ADD COLUMN description TEXT;   -- category hint for the categorizer, ≤ 200 chars
+-- +goose Down
+ALTER TABLE labels DROP COLUMN description;
+DROP TABLE IF EXISTS app_settings;
+```
+
+A row overrides the matching environment default; no row means the environment value applies. `api_key` is stored in
+plain text.

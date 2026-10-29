@@ -259,11 +259,31 @@ type TokensView struct {
 type AdminCategory struct {
 	ID                       int64
 	Slug, Name, NameHe, Icon string
+	Description              string
 	SortOrder, RecipeCount   int
+}
+
+// AdminEngine is the auto-categorization form on the admin page. The API key is never rendered, only KeySet.
+type AdminEngine struct {
+	Enabled      bool
+	URL, Model   string
+	ThresholdPct string // as typed on a failed save
+	KeySet       bool
+	Test         *EngineTest
+}
+
+// EngineTest is the result of "Test connection".
+type EngineTest struct {
+	OK         bool
+	Detail     string // error text when !OK
+	Model      string
+	Categories []string
+	Confidence int // percent
 }
 type AdminCategoriesView struct {
 	Layout
 	Items      []AdminCategory
+	Engine     AdminEngine
 	FormErrors map[string]string
 }
 type SigninView struct {

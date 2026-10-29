@@ -377,3 +377,18 @@ other = "נשמר"
 
 ["issue.field.text"]
 other = "הטקסט"
+
+["flash.categorizer_saved"]
+other = "הגדרות הסיווג האוטומטי נשמרו"
+
+["issue.field.url"]
+other = "כתובת"
+
+["issue.field.model"]
+other = "מודל"
+
+["issue.field.threshold"]
+other = "סף"
+
+["issue.field.api_key"]
+other = "מפתח API"

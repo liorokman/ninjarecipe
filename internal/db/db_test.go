@@ -28,7 +28,7 @@ func TestFreshMigrateSeedsCategories(t *testing.T) {
 		t.Fatalf("seed: %d categories, %d tags", cats, tags)
 	}
 	var v int
-	if err := d.Reader.QueryRow(`SELECT MAX(version_id) FROM goose_db_version`).Scan(&v); err != nil || v != 3 {
+	if err := d.Reader.QueryRow(`SELECT MAX(version_id) FROM goose_db_version`).Scan(&v); err != nil || v != 4 {
 		t.Fatalf("goose version %d err %v", v, err)
 	}
 	// idempotent
@@ -143,5 +143,33 @@ func TestMigration0003UpDownUp(t *testing.T) {
 	var key string
 	if err := d.Reader.QueryRow(`SELECT COALESCE(source_key,'') FROM recipes WHERE id='r1'`).Scan(&key); err != nil || key != "" {
 		t.Fatalf("source_key is empty after a down/up cycle until the startup backfill: %q %v", key, err)
+	}
+}
+
+func TestMigration0004UpDownUp(t *testing.T) {
+	ctx := context.Background()
+	d := openMigrated(t)
+	if _, err := d.Writer.Exec(`INSERT INTO app_settings (key, value) VALUES ('categorizer.url','http://x')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Writer.Exec(`UPDATE labels SET description='Anything with fish' WHERE slug='fish_seafood'`); err != nil {
+		t.Fatal(err)
+	}
+	p, err := d.provider()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.DownTo(ctx, 3); err != nil {
+		t.Fatalf("down: %v", err)
+	}
+	var n int
+	if err := d.Reader.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE name='app_settings'`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("down must drop app_settings: %d %v", n, err)
+	}
+	if _, err := d.Reader.Exec(`SELECT description FROM labels`); err == nil {
+		t.Fatal("down must drop labels.description")
+	}
+	if err := d.Migrate(ctx); err != nil {
+		t.Fatalf("up again: %v", err)
 	}
 }

@@ -69,6 +69,8 @@ var Routes = []Route{
 	{"admin.category.create", "POST", "/admin/categories", Admin},
 	{"admin.category.update", "POST", "/admin/categories/{id}/edit", Admin},
 	{"admin.category.delete", "POST", "/admin/categories/{id}/delete", Admin},
+	{"admin.categorizer.save", "POST", "/admin/categorizer", Admin},
+	{"admin.categorizer.test", "POST", "/admin/categorizer/test", Admin},
 }
 
 var routeByName = func() map[string]Route {

@@ -333,12 +333,17 @@ var slugRe = regexp.MustCompile(`^[a-z0-9_]{2,40}$`)
 // CategoryInput is the admin form.
 type CategoryInput struct {
 	Slug, Name, NameHe, Icon string
+	Description              string // optional hint for the categorizer
 	SortOrder                int
 }
 
 func validateCategory(in *CategoryInput, creating bool) []domain.Issue {
 	var errs []domain.Issue
 	in.Name, in.NameHe, in.Icon = strings.TrimSpace(in.Name), strings.TrimSpace(in.NameHe), strings.TrimSpace(in.Icon)
+	in.Description = strings.TrimSpace(in.Description)
+	if rc(in.Description) > 200 {
+		errs = append(errs, issue("description", "too_long", "max", 200))
+	}
 	if creating && !slugRe.MatchString(in.Slug) {
 		errs = append(errs, issue("slug", "invalid"))
 	}
@@ -373,7 +378,7 @@ func (s *Service) CreateCategory(ctx context.Context, actor *domain.User, in Cat
 	if errs := validateCategory(&in, true); len(errs) > 0 {
 		return &domain.ValidationError{Errors: errs}
 	}
-	_, err := s.Store.W().CreateCategory(ctx, domain.Label{Slug: in.Slug, Name: in.Name, NameHe: in.NameHe, Icon: in.Icon, SortOrder: in.SortOrder}, actor.ID, s.Clock.Now())
+	_, err := s.Store.W().CreateCategory(ctx, domain.Label{Slug: in.Slug, Name: in.Name, NameHe: in.NameHe, Icon: in.Icon, SortOrder: in.SortOrder, Description: in.Description}, actor.ID, s.Clock.Now())
 	if err == domain.ErrConflict {
 		return &domain.ValidationError{Errors: []domain.Issue{issue("slug", "duplicate")}}
 	}
@@ -389,7 +394,7 @@ func (s *Service) UpdateCategory(ctx context.Context, actor *domain.User, id int
 		return &domain.ValidationError{Errors: errs}
 	}
 	return s.Store.WithTx(ctx, func(tx *store.Tx) error {
-		if err := tx.UpdateCategory(ctx, domain.Label{ID: id, Name: in.Name, NameHe: in.NameHe, Icon: in.Icon, SortOrder: in.SortOrder}); err != nil {
+		if err := tx.UpdateCategory(ctx, domain.Label{ID: id, Name: in.Name, NameHe: in.NameHe, Icon: in.Icon, SortOrder: in.SortOrder, Description: in.Description}); err != nil {
 			return err
 		}
 		return s.reindexLabel(ctx, tx, id)

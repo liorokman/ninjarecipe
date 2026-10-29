@@ -159,9 +159,11 @@ Portion scaling (`70 §5.4`) multiplies `amount` only; lines without an amount a
 | `POST /settings/tokens/{id}/revoke` | token owner | Sets `revoked_at` |
 | `POST /settings/assistant-brief` | session | Body `text` (≤ 2000, trimmed; empty clears it). Sets `users.assistant_brief` and `assistant_brief_updated_at`. `303 /settings/tokens` with flash "Saved" |
 | `GET /admin/categories` | admin | List with rename / icon / order / delete |
-| `POST /admin/categories` | admin | Create (`slug`, `name`, `name_he`, `icon`, `sort_order`) |
+| `POST /admin/categories` | admin | Create (`slug`, `name`, `name_he`, `icon`, `sort_order`, optional `description`) |
 | `POST /admin/categories/{id}/edit` | admin | Update the same fields except `slug` |
 | `POST /admin/categories/{id}/delete` | admin | Delete; confirmation shows how many recipes use it |
+| `POST /admin/categorizer` | admin | Save the auto-categorization settings (`enabled`, `url`, `model`, `api_key`, `clear_key`, `threshold` as a percentage); 422 re-renders with field errors |
+| `POST /admin/categorizer/test` | admin | Send a sample recipe to the saved engine and show the outcome |
 
 ## 3. JSON API overview
 

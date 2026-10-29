@@ -109,3 +109,36 @@ func TestSecretIsRedactedInLogs(t *testing.T) {
 		t.Fatalf("secret leaked: %s", s)
 	}
 }
+
+func TestCategorizerLocalAI(t *testing.T) {
+	m := minimal()
+	m["CATEGORIZER"] = "localai"
+	if _, _, err := Load(env(m), nil); err == nil || !strings.Contains(err.Error(), "LOCALAI_URL") {
+		t.Fatalf("want LOCALAI_URL error, got %v", err)
+	}
+	m["LOCALAI_URL"] = "http://localai.home:8080/"
+	m["LOCALAI_API_KEY"] = "k"
+	c, _, err := Load(env(m), nil)
+	if err != nil || c.LocalAIURL != "http://localai.home:8080" || c.LocalAIKey != "k" || c.LocalAIModel != "laya-llama-cpp" ||
+		c.CategorizerThreshold != 0.5 || c.CategorizerTimeout != 60*time.Second {
+		t.Fatalf("%+v %v", c, err)
+	}
+	f := filepath.Join(t.TempDir(), "key")
+	_ = os.WriteFile(f, []byte(" filekey\n"), 0o600)
+	delete(m, "LOCALAI_API_KEY")
+	m["LOCALAI_API_KEY_FILE"] = f
+	m["CATEGORIZER_THRESHOLD"] = "0.7"
+	if c, _, err = Load(env(m), nil); err != nil || c.LocalAIKey != "filekey" || c.CategorizerThreshold != 0.7 {
+		t.Fatalf("%+v %v", c, err)
+	}
+	m["LOCALAI_API_KEY"] = "k"
+	m["CATEGORIZER_THRESHOLD"] = "1.5"
+	if _, _, err = Load(env(m), nil); err == nil || !strings.Contains(err.Error(), "LOCALAI_API_KEY") || !strings.Contains(err.Error(), "CATEGORIZER_THRESHOLD") {
+		t.Fatalf("want both errors, got %v", err)
+	}
+	m = minimal()
+	m["CATEGORIZER"] = "bogus"
+	if _, _, err = Load(env(m), nil); err == nil {
+		t.Fatal("bogus categorizer accepted")
+	}
+}

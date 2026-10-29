@@ -52,9 +52,14 @@ type Config struct {
 	BackupAt   string // HH:MM
 	BackupKeep int
 
-	Categorizer string
-	TZ          *time.Location
-	TZName      string
+	Categorizer          string // noop|localai
+	LocalAIURL           string
+	LocalAIKey           string
+	LocalAIModel         string
+	CategorizerThreshold float64
+	CategorizerTimeout   time.Duration
+	TZ                   *time.Location
+	TZName               string
 }
 
 // Dev reports development mode.
@@ -223,9 +228,40 @@ func Load(get Lookup, environ []string) (*Config, []string, error) {
 	}
 	c.BackupKeep = integer("BACKUP_KEEP", 7, 1)
 	c.Categorizer = str("CATEGORIZER", "noop")
-	if c.Categorizer != "noop" {
-		bad("CATEGORIZER", "only noop is supported")
+	if c.Categorizer != "noop" && c.Categorizer != "localai" {
+		bad("CATEGORIZER", "must be noop or localai")
 	}
+	// LOCALAI_* are defaults for the admin page (70 §4.10); the stored admin settings override them.
+	c.LocalAIURL = strings.TrimRight(str("LOCALAI_URL", ""), "/")
+	if c.LocalAIURL != "" || c.Categorizer == "localai" {
+		if u, err := url.Parse(c.LocalAIURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			bad("LOCALAI_URL", "must be an http(s) URL (required with CATEGORIZER=localai)")
+		}
+	}
+	keyFile, hasKeyFile := get("LOCALAI_API_KEY_FILE")
+	switch key, hasKey := get("LOCALAI_API_KEY"); {
+	case hasKey && key != "" && hasKeyFile && keyFile != "":
+		bad("LOCALAI_API_KEY", "set both LOCALAI_API_KEY and LOCALAI_API_KEY_FILE; use exactly one")
+	case hasKey && key != "":
+		c.LocalAIKey = key
+	case hasKeyFile && keyFile != "":
+		b, err := os.ReadFile(keyFile)
+		if err != nil {
+			bad("LOCALAI_API_KEY_FILE", "cannot read file: "+err.Error())
+		}
+		c.LocalAIKey = strings.TrimSpace(string(b))
+	}
+	c.LocalAIModel = str("LOCALAI_MODEL", "laya-llama-cpp")
+	c.CategorizerThreshold = 0.5
+	if v := str("CATEGORIZER_THRESHOLD", ""); v != "" {
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil || f <= 0 || f >= 1 {
+			bad("CATEGORIZER_THRESHOLD", "must be a number between 0 and 1 (exclusive)")
+		} else {
+			c.CategorizerThreshold = f
+		}
+	}
+	c.CategorizerTimeout = dur("CATEGORIZER_TIMEOUT", "60s")
 	c.TZName = str("TZ", "UTC")
 	loc, err := time.LoadLocation(c.TZName)
 	if err != nil {

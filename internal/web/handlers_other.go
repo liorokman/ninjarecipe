@@ -224,8 +224,13 @@ func (a *App) adminView(r *http.Request, errs map[string]string) (*AdminCategori
 	}
 	v := &AdminCategoriesView{Layout: Layout{Title: vb.Loc.T("admin.title"), ActiveNav: "menu"}, FormErrors: errs}
 	for _, c := range cs {
-		v.Items = append(v.Items, AdminCategory{ID: c.ID, Slug: c.Slug, Name: c.Name, NameHe: c.NameHe, Icon: c.Icon, SortOrder: c.SortOrder, RecipeCount: counts[c.ID]})
+		v.Items = append(v.Items, AdminCategory{ID: c.ID, Slug: c.Slug, Name: c.Name, NameHe: c.NameHe, Icon: c.Icon, Description: c.Description, SortOrder: c.SortOrder, RecipeCount: counts[c.ID]})
 	}
+	e, err := a.Svc.AdminCategorizer(r.Context(), a.user(r))
+	if err != nil {
+		return nil, err
+	}
+	v.Engine = AdminEngine{Enabled: e.Enabled, URL: e.URL, Model: e.Model, ThresholdPct: strconv.Itoa(e.ThresholdPct), KeySet: e.KeySet}
 	return v, nil
 }
 
@@ -241,7 +246,55 @@ func (a *App) adminList(w http.ResponseWriter, r *http.Request) {
 func categoryInput(r *http.Request) service.CategoryInput {
 	n, _ := strconv.Atoi(r.PostForm.Get("sort_order"))
 	return service.CategoryInput{Slug: strings.TrimSpace(r.PostForm.Get("slug")), Name: r.PostForm.Get("name"), NameHe: r.PostForm.Get("name_he"),
-		Icon: r.PostForm.Get("icon"), SortOrder: n}
+		Icon: r.PostForm.Get("icon"), Description: r.PostForm.Get("description"), SortOrder: n}
+}
+
+func (a *App) adminEngineSave(w http.ResponseWriter, r *http.Request) {
+	if err := a.parseForm(w, r, formLimit); err != nil {
+		a.fail(w, r, err)
+		return
+	}
+	f := r.PostForm
+	in := service.CategorizerInput{Enabled: f.Get("enabled") == "1", URL: f.Get("url"), Model: f.Get("model"), APIKey: f.Get("api_key"),
+		ClearKey: f.Get("clear_key") == "1", ThresholdPct: f.Get("threshold")}
+	err := a.Svc.SaveCategorizer(r.Context(), a.user(r), in)
+	var ve *domain.ValidationError
+	if errors.As(err, &ve) {
+		// re-render with what was typed; the key is never echoed
+		vb := a.vb(r)
+		errs := map[string]string{}
+		for _, is := range ve.Errors {
+			errs[is.Field] = vb.Issue(is, false)
+		}
+		v, e := a.adminView(r, errs)
+		if e != nil {
+			a.fail(w, r, e)
+			return
+		}
+		v.Engine.Enabled, v.Engine.URL, v.Engine.Model, v.Engine.ThresholdPct = in.Enabled, in.URL, in.Model, in.ThresholdPct
+		a.R.Page(w, r, 422, "admin_categories.html", v)
+		return
+	}
+	a.adminDone(w, r, err, "flash.categorizer_saved")
+}
+
+func (a *App) adminEngineTest(w http.ResponseWriter, r *http.Request) {
+	res, err := a.Svc.TestCategorizer(r.Context(), a.user(r))
+	if errors.Is(err, domain.ErrForbidden) {
+		a.fail(w, r, err)
+		return
+	}
+	v, e := a.adminView(r, nil)
+	if e != nil {
+		a.fail(w, r, e)
+		return
+	}
+	if err != nil {
+		v.Engine.Test = &EngineTest{Detail: err.Error()}
+	} else {
+		v.Engine.Test = &EngineTest{OK: true, Model: res.Model, Categories: res.Categories, Confidence: int(res.Confidence*100 + 0.5)}
+	}
+	a.R.Page(w, r, 200, "admin_categories.html", v)
 }
 
 func (a *App) adminSave(update bool) http.HandlerFunc {
@@ -514,6 +567,8 @@ func (a *App) Handlers() map[string]http.Handler {
 	f("admin.category.create", a.adminSave(false))
 	f("admin.category.update", a.adminSave(true))
 	f("admin.category.delete", a.adminDelete)
+	f("admin.categorizer.save", a.adminEngineSave)
+	f("admin.categorizer.test", a.adminEngineTest)
 	return h
 }
 

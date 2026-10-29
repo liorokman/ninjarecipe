@@ -10,11 +10,11 @@ import (
 	"github.com/liorokman/ninjarecipe/internal/textnorm"
 )
 
-const catCols = `id, type, slug, name, COALESCE(name_he,''), COALESCE(icon,''), sort_order`
+const catCols = `id, type, slug, name, COALESCE(name_he,''), COALESCE(icon,''), sort_order, COALESCE(description,'')`
 
 func scanLabel(sc interface{ Scan(...any) error }) (domain.Label, error) {
 	var l domain.Label
-	err := sc.Scan(&l.ID, &l.Type, &l.Slug, &l.Name, &l.NameHe, &l.Icon, &l.SortOrder)
+	err := sc.Scan(&l.ID, &l.Type, &l.Slug, &l.Name, &l.NameHe, &l.Icon, &l.SortOrder, &l.Description)
 	return l, err
 }
 
@@ -44,8 +44,8 @@ func (q Q) CategoryByID(ctx context.Context, id int64) (domain.Label, error) {
 
 // CreateCategory inserts a category; a duplicate slug yields ErrConflict.
 func (q Q) CreateCategory(ctx context.Context, l domain.Label, createdBy string, now time.Time) (int64, error) {
-	r, err := q.q.ExecContext(ctx, `INSERT INTO labels (type, slug, name, name_he, icon, sort_order, created_by, created_at) VALUES ('category',?,?,?,?,?,?,?)`,
-		l.Slug, l.Name, l.NameHe, nullStr(l.Icon), l.SortOrder, nullStr(createdBy), FormatTime(now))
+	r, err := q.q.ExecContext(ctx, `INSERT INTO labels (type, slug, name, name_he, icon, sort_order, description, created_by, created_at) VALUES ('category',?,?,?,?,?,?,?,?)`,
+		l.Slug, l.Name, l.NameHe, nullStr(l.Icon), l.SortOrder, nullStr(l.Description), nullStr(createdBy), FormatTime(now))
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return 0, domain.ErrConflict
@@ -57,7 +57,7 @@ func (q Q) CreateCategory(ctx context.Context, l domain.Label, createdBy string,
 
 // UpdateCategory updates everything but the slug.
 func (q Q) UpdateCategory(ctx context.Context, l domain.Label) error {
-	r, err := q.q.ExecContext(ctx, `UPDATE labels SET name=?, name_he=?, icon=?, sort_order=? WHERE id=? AND type='category'`, l.Name, l.NameHe, nullStr(l.Icon), l.SortOrder, l.ID)
+	r, err := q.q.ExecContext(ctx, `UPDATE labels SET name=?, name_he=?, icon=?, sort_order=?, description=? WHERE id=? AND type='category'`, l.Name, l.NameHe, nullStr(l.Icon), l.SortOrder, nullStr(l.Description), l.ID)
 	if err != nil {
 		return err
 	}
@@ -203,5 +203,16 @@ var _ = sql.ErrNoRows
 // AddRecipeLabel links one label with the given source.
 func (q Q) AddRecipeLabel(ctx context.Context, recipeID string, labelID int64, source string) error {
 	_, err := q.q.ExecContext(ctx, `INSERT OR IGNORE INTO recipe_labels (recipe_id, label_id, source) VALUES (?,?,?)`, recipeID, labelID, source)
+	return err
+}
+
+// UncategorizedIDs lists up to limit recipes (inbox or active) the categorizer has not processed yet, oldest first.
+func (q Q) UncategorizedIDs(ctx context.Context, limit int) ([]string, error) {
+	return q.strings(ctx, `SELECT id FROM recipes WHERE categorized_at IS NULL ORDER BY created_at LIMIT ?`, limit)
+}
+
+// MarkCategorized sets the durable "processed by the categorizer" marker.
+func (q Q) MarkCategorized(ctx context.Context, id string, now time.Time) error {
+	_, err := q.q.ExecContext(ctx, `UPDATE recipes SET categorized_at=? WHERE id=? AND categorized_at IS NULL`, FormatTime(now), id)
 	return err
 }

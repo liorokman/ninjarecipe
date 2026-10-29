@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/liorokman/ninjarecipe/internal/categorize"
 	"github.com/liorokman/ninjarecipe/internal/domain"
 	"github.com/liorokman/ninjarecipe/internal/events"
 	"github.com/liorokman/ninjarecipe/internal/images"
@@ -19,14 +20,18 @@ import (
 
 // Service is the application layer.
 type Service struct {
-	Store     *store.Store
-	Clock     domain.Clock
-	DataDir   string
-	Proc      *images.Processor
-	Fetcher   *images.Fetcher
-	Bus       *events.Bus
-	BaseURL   string
-	MaxImages int
+	Store   *store.Store
+	Clock   domain.Clock
+	DataDir string
+	Proc    *images.Processor
+	Fetcher *images.Fetcher
+	Bus     *events.Bus
+	// Categorizer suggests categories for new recipes and inbox items; nil = none (20 §15).
+	Categorizer categorize.Categorizer
+	// CatDefaults are the environment defaults of the categorizer settings; saved admin settings override them.
+	CatDefaults categorize.Settings
+	BaseURL     string
+	MaxImages   int
 	// DefaultLang is APP_DEFAULT_LANG, the fallback language of the assistant brief (40 §8).
 	DefaultLang string
 }

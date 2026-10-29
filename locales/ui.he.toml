@@ -1075,3 +1075,50 @@ other = "לדוגמה: עוד דגים מעושנים, רעיונות לבצק �
 ["tokens.brief_save"]
 other = "שמירה"
 
+["admin.description"]
+other = "מה שייך לכאן (לא חובה)"
+
+["admin.description_hint"]
+other = "למשל: כל מה שמהים, פילה ופירות ים"
+
+["admin.engine_title"]
+other = "סיווג אוטומטי"
+
+["admin.engine_lead"]
+other = "מתכונים והצעות חדשים ממוינים לקטגוריות אוטומטית על ידי מודל החלטות של LocalAI. קטגוריות רק מתווספות, אף פעם לא מוסרות."
+
+["admin.engine_enabled"]
+other = "לסווג מתכונים חדשים אוטומטית"
+
+["admin.engine_url"]
+other = "כתובת LocalAI"
+
+["admin.engine_model"]
+other = "מודל"
+
+["admin.engine_key"]
+other = "מפתח API"
+
+["admin.engine_key_saved"]
+other = "מפתח שמור. הקלידו כדי להחליף."
+
+["admin.engine_key_clear"]
+other = "להסיר את המפתח השמור"
+
+["admin.engine_threshold"]
+other = "סף (%)"
+
+["admin.engine_threshold_hint"]
+other = "קטגוריה נוספת כשהמודל בטוח לפחות בשיעור הזה. נמוך מוצא יותר, גבוה מחמיר יותר."
+
+["admin.engine_test"]
+other = "בדיקת חיבור"
+
+["admin.engine_test_hint"]
+other = "שולח מתכון פיצה לדוגמה להגדרות השמורות. שמרו קודם."
+
+["admin.engine_test_ok"]
+other = "מחובר ל-{{.Model}}. מתכון הפיצה לדוגמה סווג ל: {{.Categories}} ({{.Percent}}%)."
+
+["admin.engine_test_fail"]
+other = "לא הצלחנו לסווג את הדוגמה: {{.Detail}}"

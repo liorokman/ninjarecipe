@@ -216,9 +216,14 @@ story H6).
 
 ### 4.11 Admin categories — `GET /admin/categories`
 List with emoji, English name, Hebrew name, order, recipe count; inline edit; add form; delete with a dialog stating
-how many recipes use it.
+how many recipes use it. Each category also has an optional **"What belongs here"** line (≤ 200 characters) that the
+auto-categorizer reads (`20 §15`).
 
-## 5. Cook-mode behaviour
+Below the list, an **Auto-categorization** section (decision 4.18) edits the engine: an on/off checkbox, LocalAI
+address, model, API key (password field; never shown back; placeholder "A key is saved" and a "Remove the saved key"
+checkbox when one exists) and the threshold as a percentage (1–99, default 50). **Save** posts to
+`/admin/categorizer`; **Test connection** posts to `/admin/categorizer/test`, which sends a sample pizza recipe to the
+*saved* settings and shows a result box (matched categories and confidence, or the error text). behaviour
 
 ### 5.1 Screen wake lock
 ```js

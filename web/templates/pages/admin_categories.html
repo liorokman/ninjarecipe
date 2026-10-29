@@ -9,6 +9,7 @@
         <label class="field"><span class="field-label">{{T "admin.name_en"}}</span><input name="name" value="{{.Name}}" dir="ltr" required maxlength="60"></label>
         <label class="field"><span class="field-label">{{T "admin.name_he"}}</span><input name="name_he" value="{{.NameHe}}" dir="rtl" required maxlength="60"></label>
         <label class="field num-field"><span class="field-label">{{T "admin.order"}}</span><input name="sort_order" type="number" value="{{.SortOrder}}" inputmode="numeric"></label>
+        <label class="field field-wide"><span class="field-label">{{T "admin.description"}}</span><input name="description" value="{{.Description}}" maxlength="200" dir="auto" placeholder="{{T "admin.description_hint"}}"></label>
         <span class="muted count"><bdi>{{.RecipeCount}}</bdi> {{T "admin.recipes"}}</span>
         <button type="submit" class="btn btn-secondary">{{T "common.save"}}</button>
         <button type="button" class="btn btn-danger" data-action="open-dialog" data-target="del-cat-{{.ID}}">{{template "icon" "trash"}}<span class="sr-only">{{T "admin.delete"}}</span></button>
@@ -34,8 +35,33 @@
       <label class="field"><span class="field-label">{{T "admin.name_en"}}</span><input name="name" dir="ltr" required maxlength="60"></label>
       <label class="field"><span class="field-label">{{T "admin.name_he"}}</span><input name="name_he" dir="rtl" required maxlength="60"></label>
       <label class="field num-field"><span class="field-label">{{T "admin.order"}}</span><input name="sort_order" type="number" inputmode="numeric" value="100"></label>
+      <label class="field field-wide"><span class="field-label">{{T "admin.description"}}</span><input name="description" maxlength="200" dir="auto" placeholder="{{T "admin.description_hint"}}"></label>
       <button type="submit" class="btn btn-primary">{{template "icon" "plus"}}{{T "admin.add"}}</button>
     </form>
+  </section>
+
+  <section class="block" data-test="categorizer">
+    <h2 class="block-title">{{T "admin.engine_title"}}</h2>
+    <p class="lead">{{T "admin.engine_lead"}}</p>
+    <form method="post" action="{{url "admin.categorizer.save"}}" class="admin-form" data-test="categorizer-form" autocomplete="off">
+      <label class="check-row field-full"><input type="checkbox" name="enabled" value="1"{{if .Engine.Enabled}} checked{{end}} data-test="engine-enabled"><span>{{T "admin.engine_enabled"}}</span></label>
+      <label class="field field-wide"><span class="field-label">{{T "admin.engine_url"}}</span><input name="url" type="url" dir="ltr" value="{{.Engine.URL}}" maxlength="300" placeholder="http://localai.home:8080" data-test="engine-url">{{with index .FormErrors "url"}}<span class="field-error" role="alert">{{.}}</span>{{end}}</label>
+      <label class="field"><span class="field-label">{{T "admin.engine_model"}}</span><input name="model" dir="ltr" value="{{.Engine.Model}}" maxlength="100" required data-test="engine-model">{{with index .FormErrors "model"}}<span class="field-error" role="alert">{{.}}</span>{{end}}</label>
+      <label class="field"><span class="field-label">{{T "admin.engine_key"}}</span><input name="api_key" type="password" dir="ltr" maxlength="500" autocomplete="new-password" placeholder="{{if .Engine.KeySet}}{{T "admin.engine_key_saved"}}{{end}}" data-test="engine-key">{{with index .FormErrors "api_key"}}<span class="field-error" role="alert">{{.}}</span>{{end}}</label>
+      {{if .Engine.KeySet}}<label class="check-row"><input type="checkbox" name="clear_key" value="1" data-test="engine-clear-key"><span>{{T "admin.engine_key_clear"}}</span></label>{{end}}
+      <label class="field num-field"><span class="field-label">{{T "admin.engine_threshold"}}</span><input name="threshold" type="number" inputmode="numeric" min="1" max="99" value="{{.Engine.ThresholdPct}}" required data-test="engine-threshold">{{with index .FormErrors "threshold"}}<span class="field-error" role="alert">{{.}}</span>{{end}}</label>
+      <p class="muted field-full">{{T "admin.engine_threshold_hint"}}</p>
+      <button type="submit" class="btn btn-primary" data-test="engine-save">{{T "common.save"}}</button>
+    </form>
+    <form method="post" action="{{url "admin.categorizer.test"}}" class="stack" data-test="categorizer-test">
+      <p class="muted">{{T "admin.engine_test_hint"}}</p>
+      <button type="submit" class="btn btn-secondary" data-test="engine-test">{{T "admin.engine_test"}}</button>
+    </form>
+    {{with .Engine.Test}}
+    <div class="notice{{if not .OK}} notice-error{{end}}" role="status" data-test="engine-test-result">
+      {{if .OK}}{{T "admin.engine_test_ok" "Model" .Model "Percent" .Confidence "Categories" (join .Categories ", ")}}{{else}}{{T "admin.engine_test_fail" "Detail" .Detail}}{{end}}
+    </div>
+    {{end}}
   </section>
 </div>
 {{end}}

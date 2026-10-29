@@ -31,7 +31,7 @@ func TestRouteTable(t *testing.T) {
 		"auth.loggedout", "lang", "home", "recipes.list", "recipe.new", "recipe.create", "recipe.view", "recipe.cook", "recipe.edit", "recipe.update", "recipe.delete",
 		"recipe.visibility", "recipe.copy", "recipe.favourite", "cooklog.add", "cooklog.delete", "image.add", "image.delete", "image.order", "media", "labels.suggest",
 		"inbox.list", "inbox.view", "inbox.edit", "inbox.update", "inbox.accept", "inbox.reject", "settings", "tokens.list", "tokens.create", "tokens.revoke", "assistant.brief",
-		"admin.categories", "admin.category.update", "admin.category.delete"} {
+		"admin.categories", "admin.category.update", "admin.category.delete", "admin.categorizer.save", "admin.categorizer.test"} {
 		if !seen[name] {
 			t.Errorf("contract route %s missing", name)
 		}

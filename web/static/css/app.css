@@ -509,6 +509,10 @@ dialog[open] { animation: rise .18s ease-out; }
 .admin-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem; padding: .9rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .admin-form .field { flex: 1 1 160px; }
 .admin-form .icon-field, .admin-form .num-field { flex: 0 1 96px; }
+.admin-form .field-wide { flex: 2 1 260px; }
+.admin-form .field-full { flex: 1 1 100%; }
+.notice { background: var(--ok-soft); border: 2px solid var(--ok); border-radius: var(--radius); padding: .8rem 1rem; }
+.notice-error { background: var(--danger-soft); border-color: var(--danger); overflow-wrap: anywhere; }
 .version { text-align: center; }
 .signout-form { display: flex; justify-content: center; }
 .signin-logo { border-radius: 22px; box-shadow: var(--shadow); }

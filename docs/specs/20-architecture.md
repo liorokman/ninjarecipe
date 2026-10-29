@@ -26,7 +26,7 @@ Go code conventions and tests (`60`), screens and client JS (`70`).
 | i18n | `github.com/nicksnyder/go-i18n/v2`, embedded TOML `en`, `he`. RTL via `<html dir>` + CSS logical properties |
 | Logging | `log/slog`, JSON to stdout |
 | Config | Environment variables only (§12) |
-| LLM hook | `categorize.Categorizer` interface + durable "not yet categorized" marker + in-process events. v1 = no-op |
+| Categorizer | `categorize.Categorizer` interface + durable "not yet categorized" marker + in-process events. `noop` (default) or `localai` (decisions API) |
 | Build | Taskfile v3 (§18); multi-stage Dockerfile → `gcr.io/distroless/static-debian12:nonroot` |
 
 ### Why server-rendered + htmx
@@ -97,7 +97,7 @@ Services own transactions, validation, FTS maintenance and event publishing.
 /internal/auth/               # oidc.go, session.go, bearer.go, middleware.go
 /internal/images/             # decode/orient/resize/encode, fetch (SSRF guard), storage paths, sweeper
 /internal/events/             # Bus, event types
-/internal/categorize/         # Categorizer interface, Noop
+/internal/categorize/         # Categorizer interface, Noop, LocalAI (decisions API)
 /internal/i18n/               # bundle, per-request Localizer, template funcs, i18ncheck tool
 /internal/web/                # HTML handlers, view models, form parsing, flash
 /internal/api/                # JSON handlers, problem+json, DTOs, openapi.json
@@ -362,7 +362,12 @@ This table is the **only** definition of env vars. Compose files (`50`) use thes
 | `BACKUP_AUTO` | `true` | | In-process daily backup |
 | `BACKUP_AT` | `03:30` | | Local time (`TZ`) of the daily backup |
 | `BACKUP_KEEP` | `7` | | Snapshots kept |
-| `CATEGORIZER` | `noop` | | Only `noop` in v1 |
+| `CATEGORIZER` | `noop` | | `noop` or `localai`; default for the admin page's on/off switch |
+| `LOCALAI_URL` | | with `localai` | Default base URL, e.g. `http://localai.home:8080` |
+| `LOCALAI_API_KEY` / `LOCALAI_API_KEY_FILE` | | | At most one; bearer token if LocalAI auth is on |
+| `LOCALAI_MODEL` | `laya-llama-cpp` | | A model with the `decisions` usecase |
+| `CATEGORIZER_THRESHOLD` | `0.5` | | Probability (0–1, exclusive) a category needs |
+| `CATEGORIZER_TIMEOUT` | `60s` | | Per request |
 | `TZ` | `UTC` | | Display times, backup schedule, file names |
 | `TMPDIR` | `/data/tmp` (set in Dockerfile) | | |
 | `GOMEMLIMIT` | `300MiB` (set in compose) | | |
@@ -391,7 +396,7 @@ logged at info level.
   migration → refuse to start (exit 3) with "database is newer than this binary". Migrations are forward-only
   (no `down` in production; `migrate down-to` is not offered).
 
-## 15. LLM-categorization extension point (design only)
+## 15. Categorization (`CATEGORIZER=noop|localai`)
 
 ```go
 package categorize
@@ -402,6 +407,8 @@ type RecipeSnapshot struct {
     Categories, Tags                 []string // current
 }
 
+type CategoryInfo struct{ Slug, Name, Description string }
+
 type Suggestion struct {
     Categories []string // known category slugs only
     Tags       []string
@@ -410,21 +417,36 @@ type Suggestion struct {
 }
 
 type Categorizer interface {
-    Suggest(ctx context.Context, r RecipeSnapshot, knownCategories, knownTags []string) (Suggestion, error)
+    Suggest(ctx context.Context, r RecipeSnapshot, knownCategories []CategoryInfo, knownTags []string) (Suggestion, error)
 }
 
 type Noop struct{}
-func (Noop) Suggest(context.Context, RecipeSnapshot, []string, []string) (Suggestion, error) { return Suggestion{}, nil }
+func (Noop) Suggest(context.Context, RecipeSnapshot, []CategoryInfo, []string) (Suggestion, error) { return Suggestion{}, nil }
 ```
 
 - **Events** (`internal/events`): `RecipeCreated`, `RecipeUpdated`, `InboxItemReceived`, `InboxItemAccepted`,
   `RecipeDeleted`, each `{RecipeID, ActorID, At}`, published **after commit**. One worker goroutine, buffered channel
   of 100; when full, drop and log a warning. Events are a latency optimisation only — never the sole trigger.
-- **Durable marker**: `recipes.categorized_at` is NULL for new or imported recipes. The future categorization worker
-  processes rows with `categorized_at IS NULL` (on events, and on a periodic scan after restart), so nothing is lost
-  when an event is dropped. v1 never sets it and registers no subscriber.
-- **Future contract**: suggestions are written as `recipe_labels.source='llm'`; categories are only added, never
-  removed; the UI marks LLM labels with ✨ and lets users remove them. No migration is needed.
+- **Durable marker**: `recipes.categorized_at` is NULL for new or imported recipes. The worker processes rows with
+  `categorized_at IS NULL` on `RecipeCreated` / `InboxItemReceived` events and in a scan every 10 minutes
+  (20 rows per scan, stopping at the first categorizer error), so nothing is lost when an event is dropped or the
+  model is down. It sets the marker after a successful call, even when nothing was suggested.
+- **Contract**: suggestions are written as `recipe_labels.source='llm'`; categories are only added, never removed,
+  and never beyond the 5-category limit; tags are not suggested. Saving the recipe in the editor re-labels with
+  source `user`. The UI marks LLM labels with ✨ and lets users remove them (not yet implemented). No migration.
+- **Settings** are edited by admins on `/admin/categories` (`70 §4.11`) and stored in `app_settings`
+  (`categorizer.enabled|url|api_key|model|threshold`); the `CATEGORIZER`/`LOCALAI_*` variables below are only the
+  defaults until the first save. `categorize.Configured` reads the effective settings on every call, so changes apply
+  at once, with no restart. The API key is stored in plain text in the database (and its backups), is never rendered
+  back to the page, and an empty form field keeps it. Admins are trusted to point the URL at any host, including
+  private addresses (LocalAI usually lives on the LAN).
+- **Category hints**: `labels.description` (≤ 200 chars, optional, edited on the same page) is appended to the
+  category's question, so custom categories work without special slugs.
+- **`localai` engine** (`internal/categorize/localai.go`, decision O5): `POST {LOCALAI_URL}/v1/decisions` with the
+  recipe text (title, description, ingredients, oven modes, steps; capped at 6000 bytes) and one `predicate` question
+  per category except `other`. Categories whose `probability` ≥ `CATEGORIZER_THRESHOLD` are kept. The model must
+  declare `known_usecases: [decisions]` in LocalAI (`laya-llama-cpp`, verified live on the home LocalAI; `julia-1-llama-cpp`). It is a typed
+  classifier, not a text generator, so nothing is parsed from free text.
 
 ## 16. Backups (app side)
 

@@ -1067,3 +1067,50 @@ other = "For example: more smoked fish, pizza dough ideas, nothing too spicy."
 ["tokens.brief_save"]
 other = "Save"
 
+["admin.description"]
+other = "What belongs here (optional)"
+
+["admin.description_hint"]
+other = "e.g. anything from the sea, fillets and shellfish"
+
+["admin.engine_title"]
+other = "Auto-categorization"
+
+["admin.engine_lead"]
+other = "New recipes and suggestions are sorted into categories automatically by a LocalAI decision model. Categories are only added, never removed."
+
+["admin.engine_enabled"]
+other = "Categorize new recipes automatically"
+
+["admin.engine_url"]
+other = "LocalAI address"
+
+["admin.engine_model"]
+other = "Model"
+
+["admin.engine_key"]
+other = "API key"
+
+["admin.engine_key_saved"]
+other = "A key is saved. Type to replace it."
+
+["admin.engine_key_clear"]
+other = "Remove the saved key"
+
+["admin.engine_threshold"]
+other = "Threshold (%)"
+
+["admin.engine_threshold_hint"]
+other = "A category is added when the model is at least this sure. Lower finds more, higher is stricter."
+
+["admin.engine_test"]
+other = "Test connection"
+
+["admin.engine_test_hint"]
+other = "Sends a sample pizza recipe to the saved settings. Save first."
+
+["admin.engine_test_ok"]
+other = "Connected to {{.Model}}. The sample pizza recipe matched: {{.Categories}} ({{.Percent}}%)."
+
+["admin.engine_test_fail"]
+other = "Could not categorize the sample: {{.Detail}}"

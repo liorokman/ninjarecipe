@@ -365,3 +365,18 @@ other = "Saved"
 
 ["issue.field.text"]
 other = "That text"
+
+["flash.categorizer_saved"]
+other = "Auto-categorization settings saved"
+
+["issue.field.url"]
+other = "Web address"
+
+["issue.field.model"]
+other = "Model"
+
+["issue.field.threshold"]
+other = "Threshold"
+
+["issue.field.api_key"]
+other = "API key"

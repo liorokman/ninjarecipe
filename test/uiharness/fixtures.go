@@ -121,6 +121,7 @@ func newFixtureHandler(rd *web.Renderer, cat *i18n.Catalog, base string) http.Ha
 	})
 	f("admin.categories", func(w http.ResponseWriter, r *http.Request) {
 		v := &web.AdminCategoriesView{Layout: web.Layout{Title: loc(r).T("admin.title"), ActiveNav: "menu"}}
+		v.Engine = web.AdminEngine{URL: "http://localai.home:8080", Model: "laya-llama-cpp", ThresholdPct: "50"}
 		for i, c := range s.cats {
 			v.Items = append(v.Items, web.AdminCategory{ID: c.ID, Slug: c.Slug, Name: c.Name, NameHe: c.NameHe, Icon: c.Icon, SortOrder: c.SortOrder, RecipeCount: i % 4})
 		}
@@ -136,6 +137,13 @@ func newFixtureHandler(rd *web.Renderer, cat *i18n.Catalog, base string) http.Ha
 	f("admin.category.create", redir("admin.categories", "flash.category_saved"))
 	f("admin.category.update", redir("admin.categories", "flash.category_saved"))
 	f("admin.category.delete", redir("admin.categories", "flash.category_deleted"))
+	f("admin.categorizer.save", redir("admin.categories", "flash.categorizer_saved"))
+	f("admin.categorizer.test", func(w http.ResponseWriter, r *http.Request) {
+		v := &web.AdminCategoriesView{Layout: web.Layout{Title: loc(r).T("admin.title"), ActiveNav: "menu"}}
+		v.Engine = web.AdminEngine{Enabled: true, URL: "http://localai.home:8080", Model: "laya-llama-cpp", ThresholdPct: "50", KeySet: true,
+			Test: &web.EngineTest{OK: true, Model: "laya-llama-cpp", Categories: []string{"Pizza"}, Confidence: 93}}
+		rd.Page(w, r, 200, "admin_categories.html", v)
+	})
 	web.Mount(mux, h, s.wrap)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { rd.Error(w, r, "not_found", 0) })
 	return s.middleware(mux)

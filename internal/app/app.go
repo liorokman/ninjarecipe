@@ -13,6 +13,7 @@ import (
 
 	"github.com/liorokman/ninjarecipe/internal/api"
 	"github.com/liorokman/ninjarecipe/internal/auth"
+	"github.com/liorokman/ninjarecipe/internal/categorize"
 	"github.com/liorokman/ninjarecipe/internal/config"
 	"github.com/liorokman/ninjarecipe/internal/db"
 	"github.com/liorokman/ninjarecipe/internal/domain"
@@ -97,6 +98,12 @@ func New(ctx context.Context, cfg *config.Config, o Options) (*Server, error) {
 		svc.Fetcher.AllowAll = true
 	}
 	svc.Bus = events.NewBus(100)
+	// The categorizer is always wired; it reads the effective settings (admin page over environment) on every call.
+	svc.CatDefaults = categorize.Settings{Enabled: cfg.Categorizer == "localai", URL: cfg.LocalAIURL, APIKey: cfg.LocalAIKey,
+		Model: cfg.LocalAIModel, Threshold: cfg.CategorizerThreshold, Timeout: cfg.CategorizerTimeout}
+	svc.StartCategorizer(categorize.Configured{Load: func(ctx context.Context) (categorize.Settings, error) {
+		return svc.CategorizerSettings(ctx)
+	}})
 
 	cat, err := i18n.Load(localesFS(cfg))
 	if err != nil {

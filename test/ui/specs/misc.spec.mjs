@@ -49,6 +49,20 @@ test('admin categories: list and forms for admin', async () => {
   await page.context().close();
 });
 
+test('admin categorization settings: form, masked key and test result', async () => {
+  const page = await newPage(browser, { user: 'admin' });
+  await page.goto(url('/admin/categories?as=admin'));
+  assert.equal(await tid(page, 'categorizer-form').count(), 1);
+  assert.equal(await tid(page, 'engine-threshold').inputValue(), '50');
+  assert.equal(await tid(page, 'engine-key').getAttribute('type'), 'password');
+  assert.equal(await page.locator('[name="description"]').count() >= 2, true);
+  // no engine is configured here, so Test connection reports the problem instead of crashing
+  await tid(page, 'engine-test').click();
+  await tid(page, 'engine-test-result').waitFor();
+  assert.equal(await tid(page, 'engine-save').count(), 1);
+  await page.context().close();
+});
+
 test('menu sheet: language, theme, sign out present on phone', async () => {
   const page = await newPage(browser);
   await page.goto(url('/'));

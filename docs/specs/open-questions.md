@@ -36,6 +36,8 @@ by the owner.
 | 4.15 | Assistant feedback | Optional throw-away reasons (5 fixed codes + short note); the assistant reads decisions from `GET /api/v1/inbox/outcomes` and a per-user "what to look for" text from `GET /api/v1/assistant/brief`. | Owner (2026-10-29) | `40 §7, §8`, `70 §4.7, §4.9`, `10 H3, H5, H6` |
 | 4.16 | Assistant discovery | The app serves `openapi.json` and an in-process, stateless MCP server at `/api/v1/mcp` (same tokens, scopes and service methods as REST). Assistants such as Hermes connect without custom code. | Owner (2026-10-29) | `40 §9`, `60 §1` |
 | 4.17 | Recipe search stays outside the app | The app does not run inference or crawl the web; an external assistant finds recipes and submits them through the API. In-app ML is limited to the optional categorizer (`20 §15`). | Owner (2026-10-29) | `00` req. 10, `20 §15` |
+| 4.18 | Categorizer engine | LocalAI decisions API (`POST /v1/decisions`), one predicate per category, `CATEGORIZER=localai`; default stays `noop`. Replaces O5 (Jev is hosted-only). | Owner (2026-10-29) | `20 §15` |
+| 4.19 | Categorizer settings in the UI | Admins edit URL, API key, model, threshold and the on/off switch on `/admin/categories`; stored in `app_settings` (key in plain text, never echoed), overriding the `CATEGORIZER`/`LOCALAI_*` defaults, applied without restart. Categories gain an optional hint line. | Owner (2026-10-29) | `20 §15`, `70 §4.11`, `30 §5b` |
 | 5.1 | Oven model | The household oven is the **Israeli OO101 variant**. Its function and preset names (incl. official Hebrew) are authoritative: Broil (not Top Heat), Gourmet Roast (not Specialty Roast), Chicago Style (not Deep Pan/Pan), Calzone, no Frozen preset. | Owner (2026-10-27) | `25 §1, §3` |
 | 5.2 | Gourmet Roast | Stored as one stage with Stage 1 and Stage 2 temperature/time, as programmed on the oven. | Owner (2026-10-27) | `25 §2, §4` |
 | 5.3 | Pellets | Record blend + free note only; a full smoke box per cook is assumed (no scoop count). | Owner (2026-10-27) | `25 §2` |
@@ -50,4 +52,4 @@ by the owner.
 | # | Question | Default until answered |
 |---|---|---|
 | O4 | Review the Hebrew wording in `10 §4`, `10 H3`/`H6`, `25 §3`, `30 §5` (and later `locales/he.toml`). | **Owner action** (Lior reviews); use as written until then |
-| O5 | Categorizer engine (`20 §15`, story H4). Jev (jevai.net) is a hosted API only and cannot run on Cosmos/LocalAI. Candidates: keyword rules in Go; a multilingual embedding model behind an OpenAI-compatible `/v1/embeddings` endpoint (LocalAI, Ollama, TEI) with nearest-neighbour voting; or both. | `noop` |
+| O5 | ~~Categorizer engine~~ Resolved: decision 4.18 (LocalAI decisions API, model `laya-llama-cpp`, verified on `localai.home.okman.name`; the `laya-vllm-cpp` variant fails to load there because its `vllm-cpp` backend lacks the `LayaTypedDecisions` architecture). | Done |

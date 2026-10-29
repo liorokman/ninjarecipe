@@ -87,6 +87,13 @@ func (r *Runner) Start(ctx context.Context) {
 		n, err := r.Svc.PurgeHourly(ctx)
 		r.logRun("hourly-purge", st, err, "purged", n)
 	})
+	r.loop(ctx, 10*time.Minute, "categorize", func() {
+		st := time.Now()
+		n, err := r.Svc.CategorizePending(ctx, 20)
+		if n > 0 || err != nil {
+			r.logRun("categorize", st, err, "recipes", n)
+		}
+	})
 	r.loop(ctx, 24*time.Hour, "nightly-sweeper", func() {
 		st := time.Now()
 		n, err := r.Svc.Sweep(ctx)
