@@ -4,7 +4,10 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -225,14 +228,13 @@ func (a *API) importInbox(w http.ResponseWriter, r *http.Request, u *domain.User
 		}
 	}
 	var in service.RecipeImport
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(&in); err != nil {
+	if err := decodeStrict(r.Body, &in); err != nil {
 		var mbe *http.MaxBytesError
 		if errors.As(err, &mbe) {
 			a.fail(w, r, err)
 			return
 		}
-		a.problem(w, r, 400, "bad-request", "Bad request", "Malformed JSON body.")
+		a.problem(w, r, 400, "bad-request", "Bad request", jsonProblem(err))
 		return
 	}
 	res, err := a.Svc.ImportToInbox(r.Context(), u, in, key, r.URL.Query().Get("allow_duplicate") == "1")
@@ -248,6 +250,56 @@ func (a *API) importInbox(w http.ResponseWriter, r *http.Request, u *domain.User
 		status = 200
 	}
 	writeJSON(w, status, res)
+}
+
+// decodeStrict decodes one JSON value and rejects fields the schema does not define, so a misnamed field
+// (temperature_celsius for temperature_c) is an error instead of silently dropped data.
+func decodeStrict(body io.Reader, v any) error {
+	dec := json.NewDecoder(body)
+	dec.DisallowUnknownFields()
+	return dec.Decode(v)
+}
+
+// jsonProblem turns a decode error into a message that names the field, so an assistant can fix its payload.
+func jsonProblem(err error) string {
+	const hint = " The request schema is at /api/v1/openapi.json."
+	var syn *json.SyntaxError
+	var typ *json.UnmarshalTypeError
+	switch {
+	case errors.As(err, &syn):
+		return fmt.Sprintf("Malformed JSON body (syntax error at byte %d).", syn.Offset)
+	case errors.As(err, &typ):
+		field := typ.Field
+		if field == "" {
+			field = "(body)"
+		}
+		return fmt.Sprintf("Field %q must be %s, but a %s was sent.%s", field, jsonKind(typ.Type), typ.Value, hint)
+	case strings.HasPrefix(err.Error(), "json: unknown field "):
+		return "Unknown field " + strings.TrimPrefix(err.Error(), "json: unknown field ") + "; fields the schema does not define are rejected." + hint
+	case errors.Is(err, io.EOF):
+		return "Empty request body."
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		return "Malformed JSON body (the JSON ends too early)."
+	}
+	return "Malformed JSON body."
+}
+
+func jsonKind(t reflect.Type) string {
+	switch t.Kind() {
+	case reflect.Struct, reflect.Map:
+		return "an object"
+	case reflect.Slice, reflect.Array:
+		return "an array"
+	case reflect.String:
+		return "a string"
+	case reflect.Bool:
+		return "true or false"
+	case reflect.Float32, reflect.Float64:
+		return "a number"
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return "a whole number"
+	}
+	return t.String()
 }
 
 func nonNil(m map[string]any) map[string]any {

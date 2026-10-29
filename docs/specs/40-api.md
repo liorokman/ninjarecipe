@@ -294,7 +294,7 @@ clients should use `code` + `params`.
 | 200 | OK; idempotent replay of `POST /api/v1/inbox` |
 | 201 | Created |
 | 204 | Deleted/withdrawn |
-| 400 | Malformed JSON, bad query parameter |
+| 400 | Malformed JSON, a field of the wrong type, an unknown field (the `detail` names the field), bad query parameter |
 | 401 | Missing/invalid/expired/revoked token (`WWW-Authenticate: Bearer`) |
 | 403 | Token lacks the scope; or session user may view but not modify |
 | 404 | Not found or not viewable |

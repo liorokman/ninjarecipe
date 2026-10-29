@@ -504,3 +504,31 @@ func TestMCPToolSchemasAreValid(t *testing.T) {
 		}
 	}
 }
+
+// Regression: an assistant sent steps as plain strings and got an unexplained "Malformed JSON body".
+func TestImportErrorsNameTheField(t *testing.T) {
+	h := start(t, harness.Options{})
+	alice := h.CreateUser("Alice", "a@e.com", false, "en")
+	c := h.NewClient(nil)
+	c.Bearer = h.Token(alice)
+	for _, tc := range []struct{ name, body, want string }{
+		{"steps as strings", `{"title":"Pizza","steps":["Prepare dough","Bake"]}`, `"steps.0" must be an object`},
+		{"unknown field", `{"title":"Pizza","prep_time_minutes":20}`, `"prep_time_minutes"`},
+		{"unknown field in a stage", `{"title":"Pizza","oven_stages":[{"mode":"pizza","temperature_celsius":350}]}`, `"temperature_celsius"`},
+		{"wrong number type", `{"title":"Pizza","servings":"four"}`, `"servings" must be a whole number`},
+		{"syntax", `{"title":`, `ends too early`},
+	} {
+		st, _, body := api(c, "POST", "/api/v1/inbox", tc.body)
+		var p struct{ Detail string }
+		_ = json.Unmarshal(body, &p)
+		if st != 400 || !strings.Contains(p.Detail, tc.want) {
+			t.Errorf("%s: %d %q (want it to contain %s)", tc.name, st, p.Detail, tc.want)
+		}
+	}
+	// the corrected payload is accepted
+	if st, _, body := api(c, "POST", "/api/v1/inbox", `{"title":"Woodfire Margherita","source_url":"https://example.org/p","servings":4,"prep_minutes":20,
+		"ingredients":[{"item":"Dough","amount":500,"unit":"g"}],"steps":[{"text":"Prepare dough"},{"text":"Bake","timer_seconds":180}],
+		"oven_stages":[{"mode":"pizza","pizza_preset":"artisan","duration_seconds":180}],"categories":["pizza"]}`); st != 201 {
+		t.Fatalf("corrected payload: %d %s", st, body)
+	}
+}
