@@ -127,6 +127,9 @@ other = "Accessories"
 ["editor.add_photo"]
 other = "Add photo"
 
+["editor.take_photo"]
+other = "Take photo"
+
 ["editor.add_stage"]
 other = "Add another stage"
 

@@ -98,7 +98,7 @@ func (a *App) editorView(r *http.Request, mode string, rec *domain.Recipe, form 
 }
 
 func (a *App) editorNew(w http.ResponseWriter, r *http.Request) {
-	v, err := a.editorView(r, "new", nil, RecipeForm{Language: domain.LangUnd, Visibility: domain.VisPrivate}, nil, nil)
+	v, err := a.editorView(r, "new", nil, RecipeForm{Language: domain.LangUnd, Visibility: domain.VisShared}, nil, nil)
 	if err != nil {
 		a.fail(w, r, err)
 		return

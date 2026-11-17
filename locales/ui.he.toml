@@ -129,6 +129,9 @@ other = "אביזרים"
 ["editor.add_photo"]
 other = "הוספת תמונה"
 
+["editor.take_photo"]
+other = "צילום תמונה"
+
 ["editor.add_stage"]
 other = "הוספת שלב נוסף"
 

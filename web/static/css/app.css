@@ -217,6 +217,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--focus); outline:
 input[aria-invalid="true"] { border-color: var(--danger); }
 .input-xl { font-size: 1.35rem; font-weight: 700; min-block-size: 60px; }
 .file-hidden { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; overflow: hidden; }
+.photo-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.add-photo-camera { display: none; }
+@media (pointer: coarse) { .add-photo-camera { display: inline-flex; } }
 .add-photo:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
 .field-error { color: var(--danger); font-weight: 650; font-size: .9rem; }
 .field-warn { color: var(--warn-text); background: var(--warn-soft); padding: .3rem .6rem; border-radius: 8px; font-size: .88rem; font-weight: 600; }

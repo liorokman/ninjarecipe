@@ -49,7 +49,8 @@ function htmlToNode(html) {
   return tpl.content.firstElementChild;
 }
 
-export function createPhotoManager({ cfg, list, queue, msg, input }) {
+export function createPhotoManager({ cfg, list, queue, msg, input, inputs }) {
+  const sources = (inputs && inputs.length ? inputs : [input]).filter(Boolean);
   const pending = []; // new-recipe queue: {tile, blob}
   const orderURL = cfg.orderurl || '';
   const baseURL = orderURL ? orderURL.replace(/\/order$/, '') : '';
@@ -127,7 +128,7 @@ export function createPhotoManager({ cfg, list, queue, msg, input }) {
         refreshCover();
       }
     }
-    input.value = '';
+    sources.forEach((el) => { el.value = ''; });
   }
 
   function refreshCover() {
@@ -183,7 +184,7 @@ export function createPhotoManager({ cfg, list, queue, msg, input }) {
     return failed;
   }
 
-  input.addEventListener('change', () => handleFiles([...input.files]));
+  sources.forEach((el) => el.addEventListener('change', () => handleFiles([...el.files])));
   refreshCover();
   return { act, flush, get queued() { return pending.length; }, say };
 }

@@ -22,9 +22,14 @@
     </ul>
     <ul class="photo-grid" id="photo-queue" data-test="photo-queue"></ul>
     <div id="photo-msg" role="status" aria-live="polite"></div>
-    <label class="btn btn-secondary btn-lg add-photo">{{template "icon" "camera"}}{{T "editor.add_photo"}}
-      <input type="file" id="photo-input" class="file-hidden" accept="image/jpeg,image/png,image/webp" multiple data-test="photo-input">
-    </label>
+    <div class="photo-buttons">
+      <label class="btn btn-secondary btn-lg add-photo add-photo-camera">{{template "icon" "camera"}}{{T "editor.take_photo"}}
+        <input type="file" id="photo-camera" class="file-hidden" accept="image/*" capture="environment" data-test="photo-camera">
+      </label>
+      <label class="btn btn-secondary btn-lg add-photo">{{template "icon" "camera"}}{{T "editor.add_photo"}}
+        <input type="file" id="photo-input" class="file-hidden" accept="image/jpeg,image/png,image/webp" multiple data-test="photo-input">
+      </label>
+    </div>
     {{if eq .Mode "new"}}<p class="hint">{{T "editor.photos_not_in_draft"}}</p>{{end}}
   </section>
 

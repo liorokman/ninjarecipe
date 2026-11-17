@@ -24,7 +24,7 @@
       <div class="rating-row">{{range seq 1 5}}<label class="star-opt"><input type="radio" name="rating" value="{{.}}"><span class="star-face"><span class="star-off">{{template "icon" "star"}}</span><span class="star-on">{{template "icon" "star-fill"}}</span></span><span class="sr-only">{{T "recipe.stars" "Count" .}}</span></label>{{end}}</div>
     </fieldset>
     <label class="field"><span class="field-label">{{T "recipe.log_photo"}}</span>
-      <input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label>
+      <input type="file" name="photo" accept="image/*"></label>
     <button type="submit" class="btn btn-primary btn-lg">{{template "icon" "check"}}{{T "recipe.cooked_today"}}</button>
   </form>
   {{end}}

@@ -301,7 +301,7 @@ function swapForm(html) {
   const fresh = tpl.content.querySelector('#recipe-form');
   if (!fresh) return false;
   // keep live photo nodes (queued blobs, listeners)
-  for (const sel of ['.add-photo', '#photo-list', '#photo-queue', '#photo-msg']) {
+  for (const sel of ['.photo-buttons', '#photo-list', '#photo-queue', '#photo-msg']) {
     const oldEl = $(sel, form); const newEl = $(sel, fresh);
     if (oldEl && newEl) newEl.replaceWith(oldEl);
   }
@@ -374,7 +374,7 @@ function bind(f) {
   initTags();
   if (!photos) {
     const input = $('#photo-input', form);
-    if (input) photos = createPhotoManager({ cfg, list: $('#photo-list', form), queue: $('#photo-queue', form), msg: $('#photo-msg', form), input });
+    if (input) photos = createPhotoManager({ cfg, list: $('#photo-list', form), queue: $('#photo-queue', form), msg: $('#photo-msg', form), input, inputs: [input, $('#photo-camera', form)] });
   }
   form.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
   form.addEventListener('input', (e) => {
